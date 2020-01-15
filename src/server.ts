@@ -1,15 +1,15 @@
 import mongoose from 'mongoose';
-import { app } from '.';
 
-// Constants
-const PORT = 3000;
-const MONGO_URL = "mongodb://localhost:27017/vpn";
+import { app } from './app';
+import { env } from './env';
 
 // Function
 async function server_setup() {
   // Connect to MongoDB
   mongoose.Promise = global.Promise;
-  await mongoose.connect(MONGO_URL, {
+  await mongoose.connect(env.MONGODB_URL, {
+    useCreateIndex: true,
+    useFindAndModify: false,
     useNewUrlParser: true,
     useUnifiedTopology: true
   });
@@ -17,8 +17,8 @@ async function server_setup() {
   console.log("Connected to MongoDB");
 
   // Start server
-  app.listen(PORT, () => {
-    console.log(`Server listening at http://localhost:${PORT}/`);
+  app.listen(env.PORT, () => {
+    console.log(`Server listening at http://localhost:${env.PORT}/`);
   });
 }
 
