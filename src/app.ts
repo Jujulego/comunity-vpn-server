@@ -1,4 +1,4 @@
-import express, { Request, Response, Router } from 'express';
+import express, { Router } from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -18,10 +18,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // Routes
-app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "hello world !" });
-});
-
 const api = Router();
 setup_users(api);
 
