@@ -1,5 +1,7 @@
 import { Router } from 'express';
+
 import User from '../models/user';
+import auth from '../middlewares/auth';
 
 // Setup routes
 export default function(app: Router) {
@@ -23,7 +25,7 @@ export default function(app: Router) {
 
       if (user) {
         const token = await user.generateAuthToken();
-        res.send({ user, token });
+        res.send({ user, token: token.token });
       } else {
         res.status(401).send({ error: 'Login failed' });
       }
@@ -31,5 +33,9 @@ export default function(app: Router) {
     } catch (error) {
       res.status(400).send({ error });
     }
+  });
+
+  app.get('/user/me', auth, function(req, res) {
+    res.send(req.user);
   });
 }

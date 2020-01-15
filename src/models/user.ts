@@ -1,31 +1,18 @@
-import mongoose, { Document, Model, Schema } from 'mongoose';
+import mongoose, { Model, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import validator from 'validator';
 
-import { env } from '../env';
+import { User as UserData } from '../data/user';
+import { Token } from '../data/token';
 
 // Interface
-export interface Token {
-  readonly token: string
-}
-
-export interface IUser extends Document {
-  // Attributes
-  email: string
-  password: string
-  readonly tokens: Token[]
-
+interface UserModel extends Model<UserData> {
   // Methods
-  generateAuthToken(): Promise<string>
-}
-
-interface MUser extends Model<IUser> {
-  findByCredentials(email: string, password: string): Promise<IUser>;
+  findByCredentials(email: string, password: string): Promise<UserData | null>;
 }
 
 // Schema
-const schema = new Schema<IUser>({
+const schema = new Schema<UserData>({
   email: { type: String, required: true, unique: true, lowercase: true, validate: validator.isEmail },
   password: { type: String, required: true, minlength: 8 },
   tokens: [{
@@ -34,7 +21,7 @@ const schema = new Schema<IUser>({
 });
 
 // Events
-schema.pre<IUser>('save', async function(next) {
+schema.pre<UserData>('save', async function(next) {
   // Hash the password before saving
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 8);
@@ -46,15 +33,16 @@ schema.pre<IUser>('save', async function(next) {
 // Methods
 schema.methods.generateAuthToken = async function() {
   // Generate a new token
-  const token = jwt.sign({ _id: this._id }, env.JWT_KEY);
-  this.tokens.push({ token });
+  const token = Token.generate(this);
+  this.tokens.push(token);
+
   await this.save();
 
   return token;
 };
 
 // Statics
-schema.statics.findByCredentials = async function(email: string, password: string): Promise<IUser | null> {
+schema.statics.findByCredentials = async function(email: string, password: string): Promise<UserData | null> {
   // Search user by email and password
   const user = await User.findOne({ email });
   if (!user) return null;
@@ -67,6 +55,6 @@ schema.statics.findByCredentials = async function(email: string, password: strin
 };
 
 // Create model
-const User = mongoose.model<IUser, MUser>('User', schema);
+const User = mongoose.model<UserData, UserModel>('User', schema);
 
 export default User;
