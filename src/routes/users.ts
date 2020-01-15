@@ -38,4 +38,22 @@ export default function(app: Router) {
   app.get('/user/me', auth, function(req, res) {
     res.send(req.user);
   });
+
+  app.post('/user/me/logout', auth, async function(req, res) {
+    try {
+      // Remove token
+      const index = req.user.tokens.findIndex(
+        token => token.token === req.token.token
+      );
+
+      if (index != -1) {
+        req.user.tokens.splice(index);
+        await req.user.save();
+      }
+
+      res.send({});
+    } catch (error) {
+      res.status(500).send({ error })
+    }
+  });
 }

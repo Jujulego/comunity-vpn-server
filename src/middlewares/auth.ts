@@ -29,8 +29,8 @@ async function auth(req: Request, res: Response, next: NextFunction) {
 declare global {
   namespace Express {
     interface Request {
-      user?: import('../data/user').User
-      token?: import('../data/token').Token
+      user: import('../data/user').User
+      token: import('../data/token').Token
     }
   }
 }
