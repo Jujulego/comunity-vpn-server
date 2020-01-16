@@ -1,0 +1,22 @@
+version: '3'
+
+networks:
+  comunity-vpn:
+
+services:
+  comunity-vpn-mongo:
+    image: 'mongo'
+    networks:
+      comunity-vpn:
+        aliases:
+          - mongo
+
+  comunity-vpn-server:
+    image: 'jujulego/comunity-vpn-server'
+    environment:
+      PORT: 8000
+      MONGODB_URL: 'mongodb://mongo:27017/vpn'
+    networks:
+      - comunity-vpn
+    ports:
+      - 8000:8000

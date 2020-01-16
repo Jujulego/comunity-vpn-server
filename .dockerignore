@@ -1,0 +1,9 @@
+build
+Dockerfile
+docker-compose
+.dockerignore
+.git
+.gitignore
+.idea
+.vscode
+node_modules
