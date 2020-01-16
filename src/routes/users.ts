@@ -1,21 +1,15 @@
 import { Router } from 'express';
 
 import User from '../models/user';
-import auth from '../middlewares/auth';
+import auth, { onlyAdmin } from '../middlewares/auth';
 
 // Setup routes
 export default function(app: Router) {
   // Get all (admin only)
-  app.get('/users', auth, async function(req, res) {
-    if (!req.user.admin) return res.status(403).send({ error: 'Forbidden' });
-
-    try {
-      // Gather all users data
-      const users = await User.find({}, { _id: true, email: true });
-      res.send(users);
-    } catch (error) {
-      res.status(500).send({ error })
-    }
+  app.get('/users', auth, onlyAdmin, async function(req, res) {
+    // Gather all users data
+    const users = await User.find({}, { _id: true, email: true });
+    res.send(users);
   });
 
   // Add a user
@@ -27,7 +21,7 @@ export default function(app: Router) {
 
       res.send(user);
     } catch (error) {
-      res.status(400).send({ error })
+      return res.status(400).send({ error });
     }
   });
 
@@ -37,70 +31,44 @@ export default function(app: Router) {
   });
 
   // Get user (admin only)
-  app.get('/user/:id', auth, async function(req, res) {
-    // Check rights
-    if (!req.user.admin) {
-      return res.status(403).send({ error: 'Forbidden' });
+  app.get('/user/:id', auth, onlyAdmin, async function(req, res) {
+    // Get user data
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).send({ error:`No user found at ${id}` });
     }
 
-    try {
-      // Get user data
-      const user = await User.findById(req.params.id);
-
-      if (!user) {
-        res.status(404).send({ error: 'Not Found' });
-      } else {
-        res.send(user);
-      }
-    } catch (error) {
-      res.status(500).send({ error })
-    }
+    res.send(user);
   });
 
   // Modify user (admin only)
-  app.put('/user/:id', auth, async function(req, res) {
-    // Check rights
-    if (!req.user.admin) {
-      return res.status(403).send({ error: 'Forbidden' });
+  app.put('/user/:id', auth, onlyAdmin, async function(req, res) {
+    // Get user data
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).send({ error:`No user found at ${id}` });
     }
 
-    try {
-      // Get user data
-      const user = await User.findById(req.params.id);
-
-      if (!user) {
-        res.status(404).send({ error: 'Not Found' });
-      } else {
-        const data = req.body;
-        if (data.email) user.email = data.email;
-        if (data.password) user.password = data.password;
-        await user.save();
-
-        res.send(user);
-      }
-    } catch (error) {
-      res.status(500).send({ error })
-    }
+    // update object
+    await user.updateOne(req.body);
+    res.send(user);
   });
 
   // Delete user (admin only)
-  app.delete('/user/:id', auth, async function(req, res) {
-    if (!req.user.admin) {
-      return res.status(403).send({ error: 'Forbidden' });
+  app.delete('/user/:id', auth, onlyAdmin, async function(req, res) {
+    // Delete user data
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).send({ error:`No user found at ${id}` });
     }
 
-    try {
-      // Delete user data
-      const user = await User.findByIdAndDelete(req.params.id);
-
-      if (!user) {
-        res.status(404).send({ error: 'Not Found' });
-      } else {
-        res.send(user);
-      }
-    } catch (error) {
-      res.status(500).send({ error })
-    }
+    res.send(user);
   });
 
   // Login route
@@ -109,35 +77,29 @@ export default function(app: Router) {
       const { email, password } = req.body;
       const user = await User.findByCredentials(email, password);
 
-      if (user) {
-        const token = await user.generateAuthToken();
-        res.send({ user, token: token.token });
-      } else {
-        res.status(401).send({ error: 'Login failed' });
+      if (!user) {
+        return res.status(401).send({ error: 'Login failed' });
       }
 
+      const token = await user.generateAuthToken();
+      res.send({ user, token: token.token });
     } catch (error) {
-      console.log(error);
-      res.status(400).send({ error });
+      return res.status(400).send({ error });
     }
   });
 
   // Logout
   app.post('/user/me/logout', auth, async function(req, res) {
-    try {
-      // Remove token
-      const index = req.user.tokens.findIndex(
-        token => token.token === req.token.token
-      );
+    // Remove token
+    const index = req.user.tokens.findIndex(
+      token => token.token === req.token.token
+    );
 
-      if (index != -1) {
-        req.user.tokens.splice(index);
-        await req.user.save();
-      }
-
-      res.send({});
-    } catch (error) {
-      res.status(500).send({ error })
+    if (index != -1) {
+      req.user.tokens.splice(index);
+      await req.user.save();
     }
+
+    res.send({});
   });
 }

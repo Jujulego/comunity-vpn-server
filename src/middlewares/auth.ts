@@ -4,7 +4,7 @@ import { Token } from '../data/token';
 import User from '../models/user';
 
 // Middleware
-async function auth(req: Request, res: Response, next: NextFunction) {
+export default async function auth(req: Request, res: Response, next: NextFunction) {
   // Grab and decode token
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) {
@@ -25,6 +25,12 @@ async function auth(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
+export function onlyAdmin(req: Request, res: Response, next: NextFunction) {
+  // Only admin users are authorized
+  if (!req.user.admin) return res.status(403).send({ error: 'Forbidden' });
+  next();
+}
+
 // Add new properties to Request
 declare global {
   namespace Express {
@@ -34,5 +40,3 @@ declare global {
     }
   }
 }
-
-export default auth;
