@@ -1,5 +1,6 @@
 import { Router } from 'express';
 
+import { httpError } from '../errors';
 import User from '../models/user';
 import auth, { onlyAdmin } from '../middlewares/auth';
 
@@ -21,7 +22,7 @@ export default function(app: Router) {
 
       res.send(user);
     } catch (error) {
-      return res.status(400).send({ error });
+      return httpError(res).BadRequest(error);
     }
   });
 
@@ -37,7 +38,7 @@ export default function(app: Router) {
     const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).send({ error:`No user found at ${id}` });
+      return httpError(res).NotFound(`No user found at ${id}`);
     }
 
     res.send(user);
@@ -50,7 +51,7 @@ export default function(app: Router) {
     const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).send({ error:`No user found at ${id}` });
+      return httpError(res).NotFound(`No user found at ${id}`);
     }
 
     // update object
@@ -65,7 +66,7 @@ export default function(app: Router) {
     const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).send({ error:`No user found at ${id}` });
+      return httpError(res).NotFound(`No user found at ${id}`);
     }
 
     res.send(user);
@@ -74,15 +75,15 @@ export default function(app: Router) {
   // Login route
   app.post('/users/login', async function(req, res) {
     // Check body
-    if (!('email' in req.body)) return res.status(400).send({ error: 'Missing required email parameter' });
-    if (!('password' in req.body)) return res.status(400).send({ error: 'Missing required password parameter' });
+    if (!req.body.email) return httpError(res).BadRequest('Missing required email parameter');
+    if (!req.body.password) return httpError(res).BadRequest('Missing required password parameter');
 
     // Get user
     const { email, password } = req.body;
     const user = await User.findByCredentials(email, password);
 
     if (!user) {
-      return res.status(401).send({ error: 'Login failed' });
+      return httpError(res).Unauthorized('Login failed');
     }
 
     const token = await user.generateAuthToken();

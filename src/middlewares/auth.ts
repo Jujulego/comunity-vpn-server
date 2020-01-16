@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 
 import { Token, verifyToken } from '../data/token';
+import { httpError } from '../errors';
 import User from '../models/user';
 
 // Add new properties to Request
@@ -18,7 +19,7 @@ export default async function auth(req: Request, res: Response, next: NextFuncti
   // Grab and decode token
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) {
-    return res.status(401).send({ error: 'Unauthorized' });
+    return httpError(res).Unauthorized();
   }
 
   const data = verifyToken(token);
@@ -26,7 +27,7 @@ export default async function auth(req: Request, res: Response, next: NextFuncti
   // Search for corresponding user
   const user = await User.findOne({ _id: data._id, 'tokens.token': token });
   if (!user) {
-    return res.status(401).send({ error: 'Unauthorized' });
+    return httpError(res).Unauthorized();
   }
 
   req.user = user;
@@ -37,6 +38,6 @@ export default async function auth(req: Request, res: Response, next: NextFuncti
 
 export function onlyAdmin(req: Request, res: Response, next: NextFunction) {
   // Only admin users are authorized
-  if (!req.user.admin) return res.status(403).send({ error: 'Forbidden' });
+  if (!req.user.admin) return httpError(res).Forbidden();
   next();
 }
