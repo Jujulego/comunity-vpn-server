@@ -7,6 +7,7 @@ export interface User extends Document {
   // Attributes
   email: string
   password: string
+  admin: boolean
   readonly tokens: Token[]
 
   // Methods

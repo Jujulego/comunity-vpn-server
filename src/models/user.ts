@@ -15,6 +15,7 @@ interface UserModel extends Model<UserData> {
 const schema = new Schema<UserData>({
   email: { type: String, required: true, unique: true, lowercase: true, validate: validator.isEmail },
   password: { type: String, required: true, minlength: 8 },
+  admin: { type: Boolean, default: false },
   tokens: [{
     token: { type: String, required: true }
   }]
