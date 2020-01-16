@@ -1,7 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { Token } from '../data/token';
+import { Token, verifyToken } from '../data/token';
 import User from '../models/user';
+
+// Add new properties to Request
+declare global {
+  namespace Express {
+    interface Request {
+      user: import('../data/user').User
+      token: Token
+    }
+  }
+}
 
 // Middleware
 export default async function auth(req: Request, res: Response, next: NextFunction) {
@@ -11,7 +21,7 @@ export default async function auth(req: Request, res: Response, next: NextFuncti
     return res.status(401).send({ error: 'Unauthorized' });
   }
 
-  const data = Token.verify(token);
+  const data = verifyToken(token);
 
   // Search for corresponding user
   const user = await User.findOne({ _id: data._id, 'tokens.token': token });
@@ -20,7 +30,7 @@ export default async function auth(req: Request, res: Response, next: NextFuncti
   }
 
   req.user = user;
-  req.token = new Token(token);
+  req.token = user.tokens.find(tk => tk.token == token) as Token;
 
   return next();
 }
@@ -29,14 +39,4 @@ export function onlyAdmin(req: Request, res: Response, next: NextFunction) {
   // Only admin users are authorized
   if (!req.user.admin) return res.status(403).send({ error: 'Forbidden' });
   next();
-}
-
-// Add new properties to Request
-declare global {
-  namespace Express {
-    interface Request {
-      user: import('../data/user').User
-      token: import('../data/token').Token
-    }
-  }
 }

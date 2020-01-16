@@ -73,32 +73,27 @@ export default function(app: Router) {
 
   // Login route
   app.post('/users/login', async function(req, res) {
-    try {
-      const { email, password } = req.body;
-      const user = await User.findByCredentials(email, password);
+    // Check body
+    if (!('email' in req.body)) return res.status(400).send({ error: 'Missing required email parameter' });
+    if (!('password' in req.body)) return res.status(400).send({ error: 'Missing required password parameter' });
 
-      if (!user) {
-        return res.status(401).send({ error: 'Login failed' });
-      }
+    // Get user
+    const { email, password } = req.body;
+    const user = await User.findByCredentials(email, password);
 
-      const token = await user.generateAuthToken();
-      res.send({ user, token: token.token });
-    } catch (error) {
-      return res.status(400).send({ error });
+    if (!user) {
+      return res.status(401).send({ error: 'Login failed' });
     }
+
+    const token = await user.generateAuthToken();
+    res.send(token);
   });
 
   // Logout
   app.post('/user/me/logout', auth, async function(req, res) {
     // Remove token
-    const index = req.user.tokens.findIndex(
-      token => token.token === req.token.token
-    );
-
-    if (index != -1) {
-      req.user.tokens.splice(index);
-      await req.user.save();
-    }
+    await req.token.remove();
+    await req.user.save();
 
     res.send({});
   });

@@ -1,4 +1,4 @@
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 import { Token } from './token';
 
@@ -8,7 +8,7 @@ export interface User extends Document {
   email: string
   password: string
   admin: boolean
-  readonly tokens: Token[]
+  readonly tokens: Types.DocumentArray<Token>
 
   // Methods
   generateAuthToken(): Promise<Token>

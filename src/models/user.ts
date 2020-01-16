@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import validator from 'validator';
 
 import { User as UserData } from '../data/user';
-import { Token } from '../data/token';
+import { generateToken } from '../data/token';
 
 // Interface
 interface UserModel extends Model<UserData> {
@@ -34,9 +34,8 @@ schema.pre<UserData>('save', async function(next) {
 // Methods
 schema.methods.generateAuthToken = async function() {
   // Generate a new token
-  const token = Token.generate(this);
+  const token = this.tokens.create({ token: generateToken(this) });
   this.tokens.push(token);
-
   await this.save();
 
   return token;
