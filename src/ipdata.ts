@@ -1,6 +1,8 @@
 import IPData from 'ipdata';
 
+import { env } from './env';
+
 // Setup ipdata service
-const ipdata = new IPData('d7beb4eaf003524bc95f059e4e885c011523226c03bd17af8b8a503e');
+const ipdata = new IPData(env.IPDATA_KEY);
 
 export default ipdata;
