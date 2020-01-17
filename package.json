@@ -1,6 +1,6 @@
 {
   "name": "comunity-vpn-server",
-  "version": "0.2",
+  "version": "0.2.1",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
@@ -23,6 +23,7 @@
     "@types/helmet": "^0.0.45",
     "@types/jest": "^24.0.25",
     "@types/jsonwebtoken": "^8.3.6",
+    "@types/lru-cache": "^5.1.0",
     "@types/mongoose": "^5.5.41",
     "@types/morgan": "^1.7.37",
     "@types/validator": "^12.0.1",
