@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { httpError } from '../errors';
 import User from '../models/user';
 import auth, { onlyAdmin } from '../middlewares/auth';
+import required from '../middlewares/required';
 
 // Setup routes
 export default function(app: Router) {
@@ -14,7 +15,7 @@ export default function(app: Router) {
   });
 
   // Add a user
-  app.post('/users', async function(req, res) {
+  app.post('/users', required('email', 'password'), async function(req, res) {
     try {
       // Create new user
       const user = new User(req.body);
@@ -73,11 +74,7 @@ export default function(app: Router) {
   });
 
   // Login route
-  app.post('/users/login', async function(req, res) {
-    // Check body
-    if (!req.body.email) return httpError(res).BadRequest('Missing required email parameter');
-    if (!req.body.password) return httpError(res).BadRequest('Missing required password parameter');
-
+  app.post('/users/login', required('email', 'password'), async function(req, res) {
     // Get user
     const { email, password } = req.body;
     const user = await User.findByCredentials(email, password);
