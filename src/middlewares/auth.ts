@@ -16,24 +16,28 @@ declare global {
 
 // Middleware
 export default async function auth(req: Request, res: Response, next: NextFunction) {
-  // Grab and decode token
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return httpError(res).Unauthorized();
+  try {
+    // Grab and decode token
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return httpError(res).Unauthorized();
+    }
+
+    const data = verifyToken(token);
+
+    // Search for corresponding user
+    const user = await User.findOne({ _id: data._id, 'tokens.token': token });
+    if (!user) {
+      return httpError(res).Unauthorized();
+    }
+
+    req.user = user;
+    req.token = user.tokens.find(tk => tk.token == token) as Token;
+
+    return next();
+  } catch (error) {
+    next(error);
   }
-
-  const data = verifyToken(token);
-
-  // Search for corresponding user
-  const user = await User.findOne({ _id: data._id, 'tokens.token': token });
-  if (!user) {
-    return httpError(res).Unauthorized();
-  }
-
-  req.user = user;
-  req.token = user.tokens.find(tk => tk.token == token) as Token;
-
-  return next();
 }
 
 export function onlyAdmin(req: Request, res: Response, next: NextFunction) {
