@@ -3,7 +3,7 @@ import IPData from 'ipdata';
 
 import { env } from '../env';
 import { httpError } from '../errors';
-import auth from '../middlewares/auth';
+import auth, { onlyAdmin } from '../middlewares/auth';
 import required from '../middlewares/required';
 import { Server as ServerData } from '../data/server';
 import Server from '../models/server';
@@ -18,7 +18,7 @@ export default function(app: Router) {
     try {
       // Get ip's country
       const { ip } = req.body;
-      const { country_name: country } = await ipdata.lookup(ip, 'country_name');
+      const { country_name: country } = await ipdata.lookup(ip);
 
       // Create server
       const server = new Server({ ip, country, user: req.user });
@@ -105,7 +105,7 @@ export default function(app: Router) {
     }
   });
 
-  // Get servers
+  // Get some servers
   app.get('/servers', auth, async function(req, res, next) {
     try {
       // get filters
@@ -122,6 +122,17 @@ export default function(app: Router) {
         { $project: { _id: 1, country: 1, ip: 1, port: 1 }},
       ]);
 
+      res.send(servers);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get all servers (admin only)
+  app.get('/servers/all', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // get all servers
+      const servers = await Server.find();
       res.send(servers);
     } catch (error) {
       next(error);

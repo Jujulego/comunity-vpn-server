@@ -4,6 +4,7 @@ import { httpError } from '../errors';
 import auth, { onlyAdmin } from '../middlewares/auth';
 import required from '../middlewares/required';
 import User from '../models/user';
+import Server from '../models/server';
 
 // Setup routes
 export default function(app: Router) {
@@ -36,6 +37,17 @@ export default function(app: Router) {
     res.send(req.user);
   });
 
+  // Get my servers
+  app.get('/user/me/servers/', auth, async function(req, res, next) {
+    try {
+      // get my servers
+      const servers = await Server.find({ user: req.user });
+      res.send(servers);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Get user (admin only)
   app.get('/user/:id', auth, onlyAdmin, async function(req, res, next) {
     try {
@@ -48,6 +60,19 @@ export default function(app: Router) {
       }
 
       res.send(user);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get user's servers (admin only)
+  app.get('/user/:id/servers/', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // get some servers
+      const { id } = req.params;
+      const servers = await Server.find({ user: id });
+
+      res.send(servers);
     } catch (error) {
       next(error);
     }
