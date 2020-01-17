@@ -1,11 +1,15 @@
 import { Router } from 'express';
+import IPData from 'ipdata';
 
+import { env } from '../env';
 import { httpError } from '../errors';
-import ipdata from '../ipdata';
 import auth from '../middlewares/auth';
 import required from '../middlewares/required';
 import { Server as ServerData } from '../data/server';
 import Server from '../models/server';
+
+// Setup ipdata service
+const ipdata = new IPData(env.IPDATA_KEY);
 
 // Setup routes
 export default function(app: Router) {
