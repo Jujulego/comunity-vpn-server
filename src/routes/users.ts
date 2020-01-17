@@ -45,6 +45,18 @@ export default function(app: Router) {
     res.send(user);
   });
 
+  // Modify myself
+  app.put('/user/me', auth, async function(req, res) {
+    // Cannot make myself an admin
+    if (!req.user.admin && req.body.admin) {
+      req.body.admin = false;
+    }
+
+    // Update user
+    await req.user.updateOne(req.body);
+    res.send(req.user);
+  });
+
   // Modify user (admin only)
   app.put('/user/:id', auth, onlyAdmin, async function(req, res) {
     // Get user data
@@ -55,8 +67,21 @@ export default function(app: Router) {
       return httpError(res).NotFound(`No user found at ${id}`);
     }
 
-    // update object
+    // Update user
     await user.updateOne(req.body);
+    res.send(user);
+  });
+
+  // Delete myself
+  app.delete('/user/me', auth, async function(req, res) {
+    // Delete user data
+    const { id } = req.user.id;
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return httpError(res).NotFound(`No user found at ${id}`);
+    }
+
     res.send(user);
   });
 
@@ -64,7 +89,7 @@ export default function(app: Router) {
   app.delete('/user/:id', auth, onlyAdmin, async function(req, res) {
     // Delete user data
     const { id } = req.params;
-    const user = await User.findById(id);
+    const user = await User.findByIdAndDelete(id);
 
     if (!user) {
       return httpError(res).NotFound(`No user found at ${id}`);
