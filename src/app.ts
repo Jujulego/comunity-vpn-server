@@ -6,6 +6,7 @@ import morgan from 'morgan';
 
 import { httpError } from './errors';
 import setup_users from './routes/users';
+import setup_servers from './routes/servers';
 
 // Prepare express app
 export const app = express();
@@ -21,6 +22,7 @@ app.use(bodyParser.json());
 // Routes
 const api = Router();
 setup_users(api);
+setup_servers(api);
 
 app.use("/api", api);
 

@@ -1,21 +1,25 @@
 import { Router } from 'express';
 
 import { httpError } from '../errors';
-import User from '../models/user';
 import auth, { onlyAdmin } from '../middlewares/auth';
 import required from '../middlewares/required';
+import User from '../models/user';
 
 // Setup routes
 export default function(app: Router) {
   // Get all (admin only)
-  app.get('/users', auth, onlyAdmin, async function(req, res) {
-    // Gather all users data
-    const users = await User.find({}, { _id: true, email: true });
-    res.send(users);
+  app.get('/users', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // Gather all users data
+      const users = await User.find({}, { _id: true, email: true });
+      res.send(users);
+    } catch (error) {
+      next(error);
+    }
   });
 
   // Add a user
-  app.post('/users', required('email', 'password'), async function(req, res) {
+  app.post('/users', required('email', 'password'), async function(req, res, next) {
     try {
       // Create new user
       const user = new User(req.body);
@@ -23,7 +27,7 @@ export default function(app: Router) {
 
       res.send(user);
     } catch (error) {
-      return httpError(res).BadRequest(error);
+      next(error);
     }
   });
 
@@ -33,91 +37,119 @@ export default function(app: Router) {
   });
 
   // Get user (admin only)
-  app.get('/user/:id', auth, onlyAdmin, async function(req, res) {
-    // Get user data
-    const { id } = req.params;
-    const user = await User.findById(id);
+  app.get('/user/:id', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // Get user data
+      const { id } = req.params;
+      const user = await User.findById(id);
 
-    if (!user) {
-      return httpError(res).NotFound(`No user found at ${id}`);
+      if (!user) {
+        return httpError(res).NotFound(`No user found at ${id}`);
+      }
+
+      res.send(user);
+    } catch (error) {
+      next(error);
     }
-
-    res.send(user);
   });
 
   // Modify myself
-  app.put('/user/me', auth, async function(req, res) {
-    // Cannot make myself an admin
-    if (!req.user.admin && req.body.admin) {
-      req.body.admin = false;
-    }
+  app.put('/user/me', auth, async function(req, res, next) {
+    try {
+      // Cannot make myself an admin
+      if (!req.user.admin && req.body.admin) {
+        req.body.admin = false;
+      }
 
-    // Update user
-    await req.user.updateOne(req.body);
-    res.send(req.user);
+      // Update user
+      await req.user.updateOne(req.body);
+      res.send(req.user);
+    } catch (error) {
+      next(error);
+    }
   });
 
   // Modify user (admin only)
-  app.put('/user/:id', auth, onlyAdmin, async function(req, res) {
-    // Get user data
-    const { id } = req.params;
-    const user = await User.findById(id);
+  app.put('/user/:id', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // Get user data
+      const { id } = req.params;
+      const user = await User.findById(id);
 
-    if (!user) {
-      return httpError(res).NotFound(`No user found at ${id}`);
+      if (!user) {
+        return httpError(res).NotFound(`No user found at ${id}`);
+      }
+
+      // Update user
+      await user.updateOne(req.body);
+      res.send(user);
+    } catch (error) {
+      next(error);
     }
-
-    // Update user
-    await user.updateOne(req.body);
-    res.send(user);
   });
 
   // Delete myself
-  app.delete('/user/me', auth, async function(req, res) {
-    // Delete user data
-    const { id } = req.user.id;
-    const user = await User.findByIdAndDelete(id);
+  app.delete('/user/me', auth, async function(req, res, next) {
+    try {
+      // Delete user data
+      const { id } = req.user.id;
+      const user = await User.findByIdAndDelete(id);
 
-    if (!user) {
-      return httpError(res).NotFound(`No user found at ${id}`);
+      if (!user) {
+        return httpError(res).NotFound(`No user found at ${id}`);
+      }
+
+      res.send(user);
+    } catch (error) {
+      next(error);
     }
-
-    res.send(user);
   });
 
   // Delete user (admin only)
-  app.delete('/user/:id', auth, onlyAdmin, async function(req, res) {
-    // Delete user data
-    const { id } = req.params;
-    const user = await User.findByIdAndDelete(id);
+  app.delete('/user/:id', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // Delete user data
+      const { id } = req.params;
+      const user = await User.findByIdAndDelete(id);
 
-    if (!user) {
-      return httpError(res).NotFound(`No user found at ${id}`);
+      if (!user) {
+        return httpError(res).NotFound(`No user found at ${id}`);
+      }
+
+      res.send(user);
+    } catch (error) {
+      next(error);
     }
-
-    res.send(user);
   });
 
   // Login route
-  app.post('/users/login', required('email', 'password'), async function(req, res) {
-    // Get user
-    const { email, password } = req.body;
-    const user = await User.findByCredentials(email, password);
+  app.post('/users/login', required('email', 'password'), async function(req, res, next) {
+    try {
+      // Get user
+      const { email, password } = req.body;
+      const user = await User.findByCredentials(email, password);
 
-    if (!user) {
-      return httpError(res).Unauthorized('Login failed');
+      if (!user) {
+        return httpError(res).Unauthorized('Login failed');
+      }
+
+      const token = await user.generateAuthToken();
+      res.send(token);
+    } catch (error) {
+      next(error);
     }
-
-    const token = await user.generateAuthToken();
-    res.send(token);
   });
 
   // Logout
-  app.post('/user/me/logout', auth, async function(req, res) {
-    // Remove token
-    await req.token.remove();
-    await req.user.save();
+  app.post('/user/me/logout', auth, async function(req, res, next) {
+    try {
+      // Remove token
+      await req.token.remove();
+      await req.user.save();
 
-    res.send({});
+      res.send({});
+    } catch (error) {
+      next(error);
+    }
   });
 }

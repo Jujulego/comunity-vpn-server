@@ -1,0 +1,147 @@
+import { Router } from 'express';
+
+import { httpError } from '../errors';
+import ipdata from '../ipdata';
+import auth from '../middlewares/auth';
+import required from '../middlewares/required';
+import { Server as ServerData } from '../data/server';
+import Server from '../models/server';
+
+// Setup routes
+export default function(app: Router) {
+  // Add server
+  app.post('/server', auth, required('ip'), async function(req, res, next) {
+    try {
+      // Get ip's country
+      const { ip } = req.body;
+      const { country_name: country } = await ipdata.lookup(ip, 'country_name');
+
+      // Create server
+      const server = new Server({ ip, country, user: req.user });
+      await server.save();
+
+      res.send(server);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get server data
+  app.get('/server/:id', auth, async function(req, res, next) {
+    try {
+      // Get server data
+      const { id } = req.params;
+      const server = await Server.findById(id);
+
+      if (!server) {
+        return httpError(res).NotFound(`No server found at ${id}`);
+      }
+
+      res.send(server);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Set server available
+  app.put('/server/:id/up', auth, required('port'), async function(req, res, next) {
+    try {
+      // Get server data
+      const { id } = req.params;
+      const { port } = req.body;
+      const server = await Server.findByIdAndUpdate(id,
+        { available: true, port },
+        { new: true }
+        );
+
+      if (!server) {
+        return httpError(res).NotFound(`No server found at ${id}`);
+      }
+
+      res.send(server);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Set server unavailable
+  app.put('/server/:id/down', auth, async function(req, res, next) {
+    try {
+      // Get server data
+      const { id } = req.params;
+      const server = await Server.findByIdAndUpdate(id,
+        { available: false },
+        { new: true }
+      );
+
+      if (!server) {
+        return httpError(res).NotFound(`No server found at ${id}`);
+      }
+
+      res.send(server);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Delete server
+  app.delete('/server/:id', auth, async function(req, res, next) {
+    try {
+      // Get server data
+      const { id } = req.params;
+      const server = await Server.findByIdAndDelete(id);
+
+      if (!server) {
+        return httpError(res).NotFound(`No server found at ${id}`);
+      }
+
+      res.send(server);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get servers
+  app.get('/servers', auth, async function(req, res, next) {
+    try {
+      // get filters
+      const filters: Partial<ServerData> = {
+        available: true
+      };
+
+      if (req.query.country) filters.country = req.query.country;
+
+      // get some servers
+      const servers = await Server.aggregate([
+        { $match: filters },
+        { $sample: { size: parseInt(req.query.size) || 5 } },
+        { $project: { _id: 1, country: 1, ip: 1, port: 1 }},
+      ]);
+
+      res.send(servers);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get countries
+  app.get('/servers/countries', auth, async function(req, res, next) {
+    try {
+      // get available countries
+      const countries = await Server.aggregate([
+        {
+          $group: {
+            _id: '$country',
+            available: { $sum: '$available' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+
+      res.send(countries);
+    } catch (error) {
+      next(error);
+    }
+  });
+}
