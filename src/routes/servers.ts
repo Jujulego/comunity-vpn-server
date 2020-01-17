@@ -4,6 +4,7 @@ import { httpError } from '../errors';
 import ipdata from '../ipdata';
 import auth from '../middlewares/auth';
 import required from '../middlewares/required';
+import { Server as ServerData } from '../data/server';
 import Server from '../models/server';
 
 // Setup routes
@@ -95,6 +96,50 @@ export default function(app: Router) {
       }
 
       res.send(server);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get servers
+  app.get('/servers', auth, async function(req, res, next) {
+    try {
+      // get filters
+      const filters: Partial<ServerData> = {
+        available: true
+      };
+
+      if (req.query.country) filters.country = req.query.country;
+
+      // get some servers
+      const servers = await Server.aggregate([
+        { $match: filters },
+        { $sample: { size: parseInt(req.query.size) || 5 } },
+        { $project: { _id: 1, country: 1, ip: 1, port: 1 }},
+      ]);
+
+      res.send(servers);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get countries
+  app.get('/servers/countries', auth, async function(req, res, next) {
+    try {
+      // get available countries
+      const countries = await Server.aggregate([
+        {
+          $group: {
+            _id: '$country',
+            available: { $sum: '$available' },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+
+      res.send(countries);
     } catch (error) {
       next(error);
     }
