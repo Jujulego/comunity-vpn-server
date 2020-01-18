@@ -30,11 +30,12 @@
     "jest": "^24.9.0",
     "nodemon": "^2.0.2",
     "ts-node": "^8.6.2",
+    "tsconfig-paths": "^3.9.0",
     "typescript": "^3.7.4"
   },
   "scripts": {
     "test": "jest",
     "build": "tsc",
-    "start": "nodemon --exec ts-node src/server.ts"
+    "start": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts"
   }
 }
