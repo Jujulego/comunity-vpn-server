@@ -1,6 +1,7 @@
 import mongoose, { Model, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
+import _ from 'lodash';
 
 import { User as UserData } from 'data/user';
 import { generateToken } from 'data/token';
@@ -39,6 +40,10 @@ schema.methods.generateAuthToken = async function() {
   await this.save();
 
   return token;
+};
+
+schema.methods.toJSON = function(options) {
+  return _.omit(this.toObject(options), ['password', 'tokens']);
 };
 
 // Statics
