@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import validator from 'validator';
 
-import { Server as ServerData } from '../data/server';
+import { Server as ServerData } from 'data/server';
 
 // Schema
 const schema = new Schema<ServerData>({

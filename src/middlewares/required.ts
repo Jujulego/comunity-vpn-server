@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { httpError } from '../errors';
+import { httpError } from 'errors';
 
 // Middleware
 export default function required(...vars: string[]) {

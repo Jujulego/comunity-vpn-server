@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import IPData from 'ipdata';
 
-import { env } from '../env';
-import { httpError } from '../errors';
-import auth, { onlyAdmin } from '../middlewares/auth';
-import required from '../middlewares/required';
-import { Server as ServerData } from '../data/server';
-import Server from '../models/server';
+import { env } from 'env';
+import { httpError } from 'errors';
+
+import auth, { onlyAdmin } from 'middlewares/auth';
+import required from 'middlewares/required';
+
+import { Server as ServerData } from 'data/server';
+import Server from 'models/server';
 
 // Setup ipdata service
 const ipdata = new IPData(env.IPDATA_KEY);

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
-import { app } from './app';
-import { env } from './env';
+import { app } from 'app';
+import { env } from 'env';
 
 // Function
 async function server_setup() {

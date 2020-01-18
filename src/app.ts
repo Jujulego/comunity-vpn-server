@@ -4,9 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
-import { httpError } from './errors';
-import setup_users from './routes/users';
-import setup_servers from './routes/servers';
+import { httpError } from 'errors';
+import setup_users from 'routes/users';
+import setup_servers from 'routes/servers';
 
 // Prepare express app
 export const app = express();

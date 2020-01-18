@@ -2,8 +2,8 @@ import mongoose, { Model, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
 
-import { User as UserData } from '../data/user';
-import { generateToken } from '../data/token';
+import { User as UserData } from 'data/user';
+import { generateToken } from 'data/token';
 
 // Interface
 interface UserModel extends Model<UserData> {
