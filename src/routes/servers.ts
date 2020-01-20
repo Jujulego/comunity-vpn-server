@@ -55,14 +55,21 @@ export default function(app: Router) {
       // Get server data
       const { id } = req.params;
       const { port } = req.body;
-      const server = await Server.findByIdAndUpdate(id,
-        { available: true, port },
-        { new: true }
-        );
+      const server = await Server.findById(id);
 
+      // Errors
       if (!server) {
         return httpError(res).NotFound(`No server found at ${id}`);
       }
+
+      if (!req.user.admin && server.user != req.user.id) {
+        return httpError(res).Forbidden();
+      }
+
+      // Update server
+      server.available = true;
+      server.port = port;
+      await server.save();
 
       res.send(server);
     } catch (error) {
@@ -75,14 +82,20 @@ export default function(app: Router) {
     try {
       // Get server data
       const { id } = req.params;
-      const server = await Server.findByIdAndUpdate(id,
-        { available: false },
-        { new: true }
-      );
+      const server = await Server.findById(id);
 
+      // Errors
       if (!server) {
         return httpError(res).NotFound(`No server found at ${id}`);
       }
+
+      if (!req.user.admin && server.user != req.user.id) {
+        return httpError(res).Forbidden();
+      }
+
+      // Update server
+      server.available = false;
+      await server.save();
 
       res.send(server);
     } catch (error) {
@@ -95,11 +108,19 @@ export default function(app: Router) {
     try {
       // Get server data
       const { id } = req.params;
-      const server = await Server.findByIdAndDelete(id);
+      const server = await Server.findById(id);
 
+      // Errors
       if (!server) {
         return httpError(res).NotFound(`No server found at ${id}`);
       }
+
+      if (!req.user.admin && server.user != req.user.id) {
+        return httpError(res).Forbidden();
+      }
+
+      // Delete server
+      await server.remove();
 
       res.send(server);
     } catch (error) {
