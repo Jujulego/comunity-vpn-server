@@ -11,6 +11,7 @@
     "helmet": "^3.21.2",
     "ipdata": "^2.2.0",
     "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.15",
     "mongoose": "^5.8.7",
     "morgan": "^1.9.1",
     "validator": "^12.1.0"
@@ -23,6 +24,7 @@
     "@types/helmet": "^0.0.45",
     "@types/jest": "^24.0.25",
     "@types/jsonwebtoken": "^8.3.6",
+    "@types/lodash": "^4.14.149",
     "@types/lru-cache": "^5.1.0",
     "@types/mongoose": "^5.5.41",
     "@types/morgan": "^1.7.37",
@@ -30,11 +32,12 @@
     "jest": "^24.9.0",
     "nodemon": "^2.0.2",
     "ts-node": "^8.6.2",
+    "tsconfig-paths": "^3.9.0",
     "typescript": "^3.7.4"
   },
   "scripts": {
     "test": "jest",
     "build": "tsc",
-    "start": "nodemon --exec ts-node src/server.ts"
+    "start": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts"
   }
 }

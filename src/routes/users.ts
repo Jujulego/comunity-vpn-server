@@ -1,10 +1,12 @@
 import { Router } from 'express';
 
-import { httpError } from '../errors';
-import auth, { onlyAdmin } from '../middlewares/auth';
-import required from '../middlewares/required';
-import User from '../models/user';
-import Server from '../models/server';
+import { httpError } from 'errors';
+
+import auth, { onlyAdmin } from 'middlewares/auth';
+import required from 'middlewares/required';
+
+import User from 'models/user';
+import Server from 'models/server';
 
 // Setup routes
 export default function(app: Router) {

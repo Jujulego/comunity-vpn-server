@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { Token, verifyToken } from '../data/token';
-import { httpError } from '../errors';
-import User from '../models/user';
+import { httpError } from 'errors';
+
+import { Token, verifyToken } from 'data/token';
+import User from 'models/user';
 
 // Add new properties to Request
 declare global {

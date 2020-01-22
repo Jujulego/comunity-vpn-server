@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { Document } from 'mongoose';
 
-import { env } from '../env';
+import { env } from 'env';
 
 // Interfaces
 export interface TokenContent {
