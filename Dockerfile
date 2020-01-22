@@ -18,9 +18,12 @@ FROM node:12.14.0
 RUN mkdir /app
 WORKDIR /app
 
+ENV NODE_PATH=.
+
 COPY --from=builder /app/build /app
 COPY --from=builder /app/package.json /app
 COPY --from=builder /app/yarn.lock /app
 
 RUN yarn install --prod
+
 ENTRYPOINT node server.js
