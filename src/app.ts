@@ -12,9 +12,14 @@ import setup_servers from 'routes/servers';
 export const app = express();
 
 // Middlewares
-app.use(cors({
-  origin: /https?:\/\/www.capellari.net/
-}));
+if (process.env.NODE_ENV === "production") {
+  app.use(cors({
+    origin: /https?:\/\/www.capellari.net/
+  }));
+} else {
+  app.use(cors());
+}
+
 app.use(helmet());
 app.use(morgan('dev'));
 
