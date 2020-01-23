@@ -14,7 +14,7 @@ export default function(app: Router) {
   app.get('/users', auth, onlyAdmin, async function(req, res, next) {
     try {
       // Gather all users data
-      const users = await User.find({}, { _id: true, email: true });
+      const users = await User.find({});
       res.send(users);
     } catch (error) {
       next(error);
@@ -89,7 +89,11 @@ export default function(app: Router) {
       }
 
       // Update user
-      await req.user.updateOne(req.body);
+      req.user.email    = req.body.email;
+      req.user.password = req.body.password;
+      req.user.admin    = req.body.admin;
+      await req.user.save();
+
       res.send(req.user);
     } catch (error) {
       next(error);
@@ -108,7 +112,12 @@ export default function(app: Router) {
       }
 
       // Update user
-      await user.updateOne(req.body);
+      const { email, password, admin } = req.body;
+      if (email !== undefined)    user.email    = email;
+      if (password !== undefined) user.password = password;
+      if (admin !== undefined)    user.admin    = admin;
+      await user.save();
+
       res.send(user);
     } catch (error) {
       next(error);
