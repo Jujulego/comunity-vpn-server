@@ -146,12 +146,13 @@ export default function(app: Router) {
     try {
       // Delete user data
       const { id } = req.params;
-      const user = await User.findByIdAndDelete(id);
+      const user = await User.findById(id);
 
       if (!user) {
         return httpError(res).NotFound(`No user found at ${id}`);
       }
 
+      await user.remove();
       res.send(user);
     } catch (error) {
       next(error);

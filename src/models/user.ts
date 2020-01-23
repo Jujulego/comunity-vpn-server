@@ -6,6 +6,8 @@ import _ from 'lodash';
 import { User as UserData } from 'data/user';
 import { generateToken } from 'data/token';
 
+import Server from './server';
+
 // Interface
 interface UserModel extends Model<UserData> {
   // Methods
@@ -30,6 +32,10 @@ schema.pre<UserData>('save', async function(next) {
   }
 
   next();
+});
+
+schema.post<UserData>('remove', async function(user) {
+  await Server.remove({ user: user.id });
 });
 
 // Methods
