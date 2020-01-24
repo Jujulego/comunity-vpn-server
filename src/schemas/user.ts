@@ -17,6 +17,11 @@ const User = new Schema<UserData>({
   tokens: [Token]
 });
 
+// Options
+User.set('toJSON', {
+  transform: (doc, ret) => _.omit(ret, ['password'])
+});
+
 // Events
 User.pre<UserData>('save', async function(next) {
   // Hash the password before saving
@@ -42,10 +47,6 @@ User.methods.generateAuthToken = async function(req: Request) {
   await this.save();
 
   return token;
-};
-
-User.methods.toJSON = function(options) {
-  return _.omit(this.toObject(options), ['password', 'tokens']);
 };
 
 // Statics

@@ -11,7 +11,6 @@ export interface TokenContent {
 interface Token extends Document {
   // Attributes
   readonly createdAt: Date;
-  readonly updatedAt: Date;
   readonly from: string;
   readonly token: string;
 }
