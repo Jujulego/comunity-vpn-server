@@ -50,6 +50,15 @@ export default function(app: Router) {
     }
   });
 
+  // Get my tokens
+  app.get('/user/me/tokens/', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      res.send(req.user.tokens);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   // Get user (admin only)
   app.get('/user/:id', auth, onlyAdmin, async function(req, res, next) {
     try {
@@ -75,6 +84,23 @@ export default function(app: Router) {
       const servers = await Server.find({ user: id });
 
       res.send(servers);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  // Get user's tokens (admin only)
+  app.get('/user/:id/tokens/', auth, onlyAdmin, async function(req, res, next) {
+    try {
+      // get some servers
+      const { id } = req.params;
+      const user = await User.findById(id);
+
+      if (!user) {
+        return httpError(res).NotFound(`No user found at ${id}`);
+      }
+
+      res.send(user.tokens);
     } catch (error) {
       next(error);
     }
