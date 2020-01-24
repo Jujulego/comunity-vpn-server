@@ -7,7 +7,7 @@ import { httpError } from 'errors';
 import auth, { onlyAdmin } from 'middlewares/auth';
 import required from 'middlewares/required';
 
-import { Server as ServerData } from 'data/server';
+import ServerData from 'data/server';
 import Server from 'models/server';
 
 // Setup ipdata service

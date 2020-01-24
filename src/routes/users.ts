@@ -170,7 +170,7 @@ export default function(app: Router) {
         return httpError(res).Unauthorized('Login failed');
       }
 
-      const token = await user.generateAuthToken();
+      const token = await user.generateAuthToken(req);
       res.send(token);
     } catch (error) {
       next(error);

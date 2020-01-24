@@ -8,8 +8,11 @@ export interface TokenContent {
   readonly _id: any
 }
 
-export interface Token extends Document {
+interface Token extends Document {
   // Attributes
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+  readonly from: string;
   readonly token: string;
 }
 
@@ -26,3 +29,5 @@ export function verifyToken(token: string | Token): TokenContent {
   // Verify
   return jwt.verify(token, env.JWT_KEY) as TokenContent;
 }
+
+export default Token;

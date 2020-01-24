@@ -2,14 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 
 import { httpError } from 'errors';
 
-import { Token, verifyToken } from 'data/token';
+import Token, { verifyToken } from 'data/token';
 import User from 'models/user';
 
 // Add new properties to Request
 declare global {
   namespace Express {
     interface Request {
-      user: import('../data/user').User
+      user: import('../data/user').default
       token: Token
     }
   }

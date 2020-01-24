@@ -10,6 +10,7 @@ import setup_servers from 'routes/servers';
 
 // Prepare express app
 export const app = express();
+app.set('trust proxy', true);
 
 // Middlewares
 if (process.env.NODE_ENV === "production") {
