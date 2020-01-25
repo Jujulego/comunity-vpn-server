@@ -1,8 +1,8 @@
 import { Response } from 'express';
 
 // Alias
-declare type ErrorNames = 'BadRequest' | 'Unauthorized' | 'Forbidden' | 'NotFound' | 'ServerError'
-declare type ErrorGenerator = (msg?: string) => Response;
+type ErrorNames = 'BadRequest' | 'Unauthorized' | 'Forbidden' | 'NotFound' | 'ServerError'
+export type ErrorGenerator = (msg?: string) => Response;
 
 // Functions
 function generator(res: Response, code: number, default_msg: string): ErrorGenerator {

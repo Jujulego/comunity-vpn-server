@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import IPData from 'ipdata';
+import validator from 'validator';
 
 import { env } from 'env';
 import { httpError } from 'errors';
@@ -13,10 +14,13 @@ import Server from 'models/server';
 // Setup ipdata service
 const ipdata = new IPData(env.IPDATA_KEY);
 
+// Utils
+const mongoId = required({ params: { id: validator.isMongoId } });
+
 // Setup routes
 export default function(app: Router) {
   // Add server
-  app.post('/server', auth, required('ip'), async function(req, res, next) {
+  app.post('/server', auth, required({ body: ['ip'] }), async function(req, res, next) {
     try {
       // Get ip's country
       const { ip } = req.body;
@@ -33,7 +37,7 @@ export default function(app: Router) {
   });
 
   // Get server data
-  app.get('/server/:id', auth, async function(req, res, next) {
+  app.get('/server/:id', auth, mongoId, async function(req, res, next) {
     try {
       // Get server data
       const { id } = req.params;
@@ -50,7 +54,7 @@ export default function(app: Router) {
   });
 
   // Set server available
-  app.put('/server/:id/up', auth, required('port'), async function(req, res, next) {
+  app.put('/server/:id/up', auth, mongoId, required({ body: ['port'] }), async function(req, res, next) {
     try {
       // Get server data
       const { id } = req.params;
@@ -78,7 +82,7 @@ export default function(app: Router) {
   });
 
   // Set server unavailable
-  app.put('/server/:id/down', auth, async function(req, res, next) {
+  app.put('/server/:id/down', auth, mongoId, async function(req, res, next) {
     try {
       // Get server data
       const { id } = req.params;
@@ -104,7 +108,7 @@ export default function(app: Router) {
   });
 
   // Delete server
-  app.delete('/server/:id', auth, async function(req, res, next) {
+  app.delete('/server/:id', auth, mongoId, async function(req, res, next) {
     try {
       // Get server data
       const { id } = req.params;

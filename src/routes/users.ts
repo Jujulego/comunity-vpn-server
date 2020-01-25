@@ -7,6 +7,10 @@ import required from 'middlewares/required';
 
 import User from 'models/user';
 import Server from 'models/server';
+import validator from 'validator';
+
+// Utils
+const mongoId = required({ params: { id: validator.isMongoId } });
 
 // Setup routes
 export default function(app: Router) {
@@ -22,7 +26,7 @@ export default function(app: Router) {
   });
 
   // Add a user
-  app.post('/users', required('email', 'password'), async function(req, res, next) {
+  app.post('/users', required({ body: ['email'] }), async function(req, res, next) {
     try {
       // Create new user
       const user = new User(req.body);
@@ -51,7 +55,7 @@ export default function(app: Router) {
   });
 
   // Get user (admin only)
-  app.get('/user/:id', auth, onlyAdmin, async function(req, res, next) {
+  app.get('/user/:id', auth, onlyAdmin, mongoId, async function(req, res, next) {
     try {
       // Get user data
       const { id } = req.params;
@@ -68,7 +72,7 @@ export default function(app: Router) {
   });
 
   // Get user's servers (admin only)
-  app.get('/user/:id/servers/', auth, onlyAdmin, async function(req, res, next) {
+  app.get('/user/:id/servers/', auth, onlyAdmin, mongoId, async function(req, res, next) {
     try {
       // get some servers
       const { id } = req.params;
@@ -101,7 +105,7 @@ export default function(app: Router) {
   });
 
   // Modify user (admin only)
-  app.put('/user/:id', auth, onlyAdmin, async function(req, res, next) {
+  app.put('/user/:id', auth, onlyAdmin, mongoId, async function(req, res, next) {
     try {
       // Get user data
       const { id } = req.params;
@@ -142,7 +146,7 @@ export default function(app: Router) {
   });
 
   // Delete user (admin only)
-  app.delete('/user/:id', auth, onlyAdmin, async function(req, res, next) {
+  app.delete('/user/:id', auth, onlyAdmin, mongoId, async function(req, res, next) {
     try {
       // Delete user data
       const { id } = req.params;
@@ -160,7 +164,7 @@ export default function(app: Router) {
   });
 
   // Login route
-  app.post('/users/login', required('email', 'password'), async function(req, res, next) {
+  app.post('/users/login', required({ body: ['email'] }), async function(req, res, next) {
     try {
       // Get user
       const { email, password } = req.body;
