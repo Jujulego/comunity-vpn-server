@@ -1,9 +1,10 @@
+import { Request } from 'express';
 import { Document, Types } from 'mongoose';
 
-import { Token } from './token';
+import Token from './token';
 
 // Interface
-export interface User extends Document {
+interface User extends Document {
   // Attributes
   email: string
   password: string
@@ -11,5 +12,7 @@ export interface User extends Document {
   readonly tokens: Types.DocumentArray<Token>
 
   // Methods
-  generateAuthToken(): Promise<Token>
+  generateAuthToken(req: Request): Promise<Token>
 }
+
+export default User;
