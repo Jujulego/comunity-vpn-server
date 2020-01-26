@@ -93,9 +93,10 @@ export default function(app: Router) {
       }
 
       // Update user
-      req.user.email    = req.body.email;
-      req.user.password = req.body.password;
-      req.user.admin    = req.body.admin;
+      const { email, password, admin } = req.body;
+      if (email !== undefined)    req.user.email    = email;
+      if (password !== undefined) req.user.password = password;
+      if (admin !== undefined)    req.user.admin    = admin;
       await req.user.save();
 
       res.send(req.user);
