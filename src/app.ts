@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import { httpError } from 'errors';
+import setup_certificates from 'routes/certificates';
 import setup_users from 'routes/users';
 import setup_servers from 'routes/servers';
 
@@ -29,6 +30,7 @@ app.use(bodyParser.json());
 
 // Routes
 const api = Router();
+setup_certificates(api);
 setup_users(api);
 setup_servers(api);
 
