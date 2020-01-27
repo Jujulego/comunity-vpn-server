@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import moment from 'moment';
-import { pki, md } from 'node-forge';
+import { md, pki } from 'node-forge';
 import path from 'path';
 
 // Type
@@ -10,11 +10,11 @@ export interface CA {
   cert: pki.Certificate
 }
 
-type AttributesNames =
-  'countryName' | 'stateOrProvinceName' | 'localityName' |
-  'commonName' | 'organizationName' | 'organizationalUnitName';
+type CAAttributesNames = 'countryName' | 'stateOrProvinceName' | 'localityName' | 'commonName' | 'organizationName' | 'organizationalUnitName';
+type ReqAttributesNames = CAAttributesNames | 'unstructuredName';
 
-export type CAAttributes = { [name in AttributesNames]: string };
+export type CAAttributes  = { [name in CAAttributesNames]:  string };
+export type ReqAttributes = { [name in ReqAttributesNames]: string };
 
 // Config
 const config = {
@@ -34,9 +34,40 @@ let ca: CA | null = null;
 function buildSubject(attrs: CAAttributes): pki.CertificateField[] {
   return Object.keys(attrs)
     .reduce<pki.CertificateField[]>((subject, name) => {
-      subject.push({ name, value: attrs[name as AttributesNames] });
+      subject.push({ name, value: attrs[name as CAAttributesNames] });
       return subject;
     }, []);
+}
+
+async function createCertificate() {
+  // Generate certificate
+  const cert = pki.createCertificate();
+  cert.serialNumber = crypto.randomBytes(config.serialNumberSize).toString('hex');
+
+  const now = moment().utc();
+  cert.validity.notBefore = now.toDate();
+  cert.validity.notAfter = now.add(config.days, 'days').toDate();
+
+  return cert;
+}
+
+async function signReq(req: Buffer, attrs: ReqAttributes, extensions: any[]) {
+  if (ca == null) throw Error('No CA loaded !');
+
+  // Load req
+  const csr = pki.certificationRequestFromPem(req.toString('utf-8'));
+
+  // Generate certificate
+  const cert = await createCertificate();
+  cert.publicKey = csr.publicKey;
+
+  const subject = buildSubject(attrs);
+  cert.setSubject(subject);
+  cert.setIssuer(ca.cert.subject.attributes);
+  cert.setExtensions(extensions);
+
+  // Sign certificate
+  cert.sign(ca.key, md.sha256.create());
 }
 
 // Functions
@@ -80,7 +111,9 @@ export async function loadCA() {
   ca = {
     key:  await pki.privateKeyFromPem(key.toString()),
     cert: await pki.certificateFromPem(cert.toString())
-  }
+  };
+
+  return ca;
 }
 
 export async function buildCA(attrs: CAAttributes) {
@@ -93,18 +126,14 @@ export async function buildCA(attrs: CAAttributes) {
   const keypair = pki.rsa.generateKeyPair({ bits: config.keySize, e: 0x10001, workers: -1 });
 
   // Generate certificate
-  const cert = pki.createCertificate();
+  const cert = await createCertificate();
   cert.publicKey = keypair.publicKey;
-  cert.serialNumber = crypto.randomBytes(config.serialNumberSize).toString('hex');
-
-  const now = moment().utc();
-  cert.validity.notBefore = now.toDate();
-  cert.validity.notAfter = now.add(config.days, 'days').toDate();
 
   const subject = buildSubject(attrs);
   cert.setSubject(subject);
   cert.setIssuer(subject);
 
+  // VPN extensions
   cert.setExtensions([{
     name: 'subjectKeyIdentifier'
   }, {
@@ -132,7 +161,57 @@ export async function buildCA(attrs: CAAttributes) {
   return ca;
 }
 
+export async function signClientReq(req: Buffer, attrs: ReqAttributes) {
+  if (ca == null) throw Error('No CA loaded !');
+
+  return await signReq(req, attrs, [{
+    name: 'basicConstraints',
+    cA: false
+  }, {
+    name: 'subjectKeyIdentifier'
+  }, {
+    name: 'authorityKeyIdentifier',
+    keyIdentifier: pki.getPublicKeyFingerprint(ca.cert.publicKey, { type: 'RSAPublicKey' }).getBytes(),
+    authorityCertIssuer: ca.cert.issuer,
+    serialNumber: ca.cert.serialNumber
+  }, {
+    name: 'extKeyUsage',
+    clientAuth: true
+  }, {
+    name: 'keyUsage',
+    cRLSign: false,
+    keyCertSign: false,
+    digitalSignature: true
+  }]);
+}
+
+export async function signServerReq(req: Buffer, attrs: ReqAttributes) {
+  if (ca == null) throw Error('No CA loaded !');
+
+  return await signReq(req, attrs, [{
+    name: 'basicConstraints',
+    cA: false
+  }, {
+    name: 'subjectKeyIdentifier'
+  }, {
+    name: 'authorityKeyIdentifier',
+    keyIdentifier: pki.getPublicKeyFingerprint(ca.cert.publicKey, { type: 'RSAPublicKey' }).getBytes(),
+    authorityCertIssuer: ca.cert.issuer,
+    serialNumber: ca.cert.serialNumber
+  }, {
+    name: 'extKeyUsage',
+    serverAuth: true
+  }, {
+    name: 'keyUsage',
+    cRLSign: false,
+    keyCertSign: false,
+    digitalSignature: true,
+    keyEncipherment: true
+  }]);
+}
+
 export default {
   hasPKI, initPKI,
-  hasCA, loadCA, buildCA
+  hasCA, loadCA, buildCA,
+  signClientReq, signServerReq
 }
