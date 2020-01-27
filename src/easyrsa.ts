@@ -51,11 +51,10 @@ function createCertificate() {
   return cert;
 }
 
-function signReq(req: string, extensions: any[]) {
+function signRequest(csr: pki.Certificate, extensions: any[]) {
   if (ca == null) throw Error('No CA loaded !');
 
   // Load req
-  const csr = pki.certificationRequestFromPem(req);
   if (!(csr as any).verify()) throw Error('Invalid CSR !');
 
   // Generate certificate
@@ -83,6 +82,12 @@ export async function hasPKI() {
   }
 }
 
+export async function initPKI() {
+  console.log('Init PKI ...');
+
+  await fs.mkdir(config.dir, { mode: config.dmode });
+}
+
 export async function hasCA() {
   if (!await hasPKI()) return false;
 
@@ -95,12 +100,6 @@ export async function hasCA() {
     if (error.code === 'ENOENT') return false;
     throw error;
   }
-}
-
-export async function initPKI() {
-  console.log('Init PKI ...');
-
-  await fs.mkdir(config.dir, { mode: config.dmode });
 }
 
 export async function loadCA() {
@@ -163,28 +162,34 @@ export async function buildCA(attrs: CAAttributes) {
   return ca;
 }
 
-export function generateReq(attrs: ReqAttributes) {
+export function getCACertificate() {
+  if (ca == null) throw Error('No CA loaded !');
+
+  return ca.cert;
+}
+
+export function generateRequest(attrs: ReqAttributes) {
   if (ca == null) throw Error('No CA loaded !');
 
   // Generate key pair
   const keypair = pki.rsa.generateKeyPair({ bits: config.keySize, e: 0x10001, workers: -1 });
 
   // Generate request
-  const crs = pki.createCertificationRequest();
-  crs.publicKey = keypair.publicKey;
+  const csr = pki.createCertificationRequest();
+  csr.publicKey = keypair.publicKey;
 
   const subject = buildSubject(attrs);
-  crs.setSubject(subject);
+  csr.setSubject(subject);
 
-  crs.sign(keypair.privateKey, md.sha256.create());
+  csr.sign(keypair.privateKey, md.sha256.create());
 
-  return crs;
+  return { csr, privateKey: keypair.privateKey };
 }
 
-export function signClientReq(req: string) {
+export function signClientRequest(csr: pki.Certificate) {
   if (ca == null) throw Error('No CA loaded !');
 
-  return signReq(req, [{
+  return signRequest(csr, [{
     name: 'basicConstraints',
     cA: false
   }, {
@@ -205,10 +210,10 @@ export function signClientReq(req: string) {
   }]);
 }
 
-export function signServerReq(req: string) {
+export function signServerRequest(csr: pki.Certificate) {
   if (ca == null) throw Error('No CA loaded !');
 
-  return signReq(req, [{
+  return signRequest(csr, [{
     name: 'basicConstraints',
     cA: false
   }, {
@@ -232,6 +237,6 @@ export function signServerReq(req: string) {
 
 export default {
   hasPKI, initPKI,
-  hasCA, loadCA, buildCA,
-  generateReq, signClientReq, signServerReq
+  hasCA, loadCA, buildCA, getCACertificate,
+  generateRequest, signClientRequest, signServerRequest
 }

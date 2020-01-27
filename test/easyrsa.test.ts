@@ -25,21 +25,20 @@ describe("easyrsa", () => {
 
   test('Generate request', async () => {
     // Generate cert
-    const crs = easyrsa.generateReq({
+    const { csr } = easyrsa.generateRequest({
       ...CA_CONFIG,
       unstructuredName: 'test'
     });
 
     // Save it to file
-    const req = pki.certificationRequestToPem(crs);
-    await fs.writeFile('base.req', req);
+    await fs.writeFile('base.req', pki.certificationRequestToPem(csr));
 
     // Sign as server
-    const srv = easyrsa.signServerReq(req.toString());
+    const srv = easyrsa.signServerRequest(csr);
     await fs.writeFile('server.crt', pki.certificateToPem(srv));
 
     // Sign as client
-    const clt = easyrsa.signClientReq(req.toString());
+    const clt = easyrsa.signClientRequest(csr);
     await fs.writeFile('client.crt', pki.certificateToPem(clt));
   });
 });
