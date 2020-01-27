@@ -39,7 +39,7 @@ function buildSubject(attrs: CAAttributes): pki.CertificateField[] {
     }, []);
 }
 
-async function createCertificate() {
+function createCertificate() {
   // Generate certificate
   const cert = pki.createCertificate();
   cert.serialNumber = crypto.randomBytes(config.serialNumberSize).toString('hex');
@@ -51,23 +51,25 @@ async function createCertificate() {
   return cert;
 }
 
-async function signReq(req: Buffer, attrs: ReqAttributes, extensions: any[]) {
+function signReq(req: string, extensions: any[]) {
   if (ca == null) throw Error('No CA loaded !');
 
   // Load req
-  const csr = pki.certificationRequestFromPem(req.toString('utf-8'));
+  const csr = pki.certificationRequestFromPem(req);
+  if (!(csr as any).verify()) throw Error('Invalid CSR !');
 
   // Generate certificate
-  const cert = await createCertificate();
+  const cert = createCertificate();
   cert.publicKey = csr.publicKey;
 
-  const subject = buildSubject(attrs);
-  cert.setSubject(subject);
+  cert.setSubject(csr.subject.attributes);
   cert.setIssuer(ca.cert.subject.attributes);
   cert.setExtensions(extensions);
 
   // Sign certificate
   cert.sign(ca.key, md.sha256.create());
+
+  return cert;
 }
 
 // Functions
@@ -126,7 +128,7 @@ export async function buildCA(attrs: CAAttributes) {
   const keypair = pki.rsa.generateKeyPair({ bits: config.keySize, e: 0x10001, workers: -1 });
 
   // Generate certificate
-  const cert = await createCertificate();
+  const cert = createCertificate();
   cert.publicKey = keypair.publicKey;
 
   const subject = buildSubject(attrs);
@@ -161,17 +163,35 @@ export async function buildCA(attrs: CAAttributes) {
   return ca;
 }
 
-export async function signClientReq(req: Buffer, attrs: ReqAttributes) {
+export function generateReq(attrs: ReqAttributes) {
   if (ca == null) throw Error('No CA loaded !');
 
-  return await signReq(req, attrs, [{
+  // Generate key pair
+  const keypair = pki.rsa.generateKeyPair({ bits: config.keySize, e: 0x10001, workers: -1 });
+
+  // Generate request
+  const crs = pki.createCertificationRequest();
+  crs.publicKey = keypair.publicKey;
+
+  const subject = buildSubject(attrs);
+  crs.setSubject(subject);
+
+  crs.sign(keypair.privateKey, md.sha256.create());
+
+  return crs;
+}
+
+export function signClientReq(req: string) {
+  if (ca == null) throw Error('No CA loaded !');
+
+  return signReq(req, [{
     name: 'basicConstraints',
     cA: false
   }, {
     name: 'subjectKeyIdentifier'
   }, {
     name: 'authorityKeyIdentifier',
-    keyIdentifier: pki.getPublicKeyFingerprint(ca.cert.publicKey, { type: 'RSAPublicKey' }).getBytes(),
+    keyIdentifier: (ca.cert as any).generateSubjectKeyIdentifier().getBytes(),
     authorityCertIssuer: ca.cert.issuer,
     serialNumber: ca.cert.serialNumber
   }, {
@@ -185,17 +205,17 @@ export async function signClientReq(req: Buffer, attrs: ReqAttributes) {
   }]);
 }
 
-export async function signServerReq(req: Buffer, attrs: ReqAttributes) {
+export function signServerReq(req: string) {
   if (ca == null) throw Error('No CA loaded !');
 
-  return await signReq(req, attrs, [{
+  return signReq(req, [{
     name: 'basicConstraints',
     cA: false
   }, {
     name: 'subjectKeyIdentifier'
   }, {
     name: 'authorityKeyIdentifier',
-    keyIdentifier: pki.getPublicKeyFingerprint(ca.cert.publicKey, { type: 'RSAPublicKey' }).getBytes(),
+    keyIdentifier: (ca.cert as any).generateSubjectKeyIdentifier().getBytes(),
     authorityCertIssuer: ca.cert.issuer,
     serialNumber: ca.cert.serialNumber
   }, {
@@ -213,5 +233,5 @@ export async function signServerReq(req: Buffer, attrs: ReqAttributes) {
 export default {
   hasPKI, initPKI,
   hasCA, loadCA, buildCA,
-  signClientReq, signServerReq
+  generateReq, signClientReq, signServerReq
 }
