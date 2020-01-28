@@ -47,7 +47,7 @@ export default function(app: Router) {
   app.get('/user/me/servers/', auth, async function(req, res, next) {
     try {
       // get my servers
-      const servers = await Server.find({ user: req.user });
+      const servers = await Server.find({ 'users.user': req.user });
       res.send(servers);
     } catch (error) {
       next(error);
@@ -76,7 +76,7 @@ export default function(app: Router) {
     try {
       // get some servers
       const { id } = req.params;
-      const servers = await Server.find({ user: id });
+      const servers = await Server.find({ 'users.user': id });
 
       res.send(servers);
     } catch (error) {
