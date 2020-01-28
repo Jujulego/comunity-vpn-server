@@ -31,14 +31,14 @@ describe("easyrsa", () => {
     });
 
     // Save it to file
-    await fs.writeFile('base.req', pki.certificationRequestToPem(csr));
+    await fs.writeFile('pki/base.req', pki.certificationRequestToPem(csr));
 
     // Sign as server
     const srv = easyrsa.signServerRequest(csr);
-    await fs.writeFile('server.crt', pki.certificateToPem(srv));
+    await fs.writeFile('pki/server.crt', pki.certificateToPem(srv));
 
     // Sign as client
     const clt = easyrsa.signClientRequest(csr);
-    await fs.writeFile('client.crt', pki.certificateToPem(clt));
+    await fs.writeFile('pki/client.crt', pki.certificateToPem(clt));
   });
 });

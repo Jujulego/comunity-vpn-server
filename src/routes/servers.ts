@@ -171,10 +171,10 @@ export default function(app: Router) {
     try {
       // get available countries
       const countries = await Server.aggregate([
+        { $match: { available: true } },
         {
           $group: {
             _id: '$country',
-            available: { $sum: '$available' },
             count: { $sum: 1 }
           }
         },
