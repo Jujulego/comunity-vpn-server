@@ -174,7 +174,7 @@ export default function(app: Router) {
         {
           $group: {
             _id: '$country',
-            available: { $sum: '$available' },
+            available: { $sum: { $cond: { if: '$available', then: 1, else: 0 } } },
             count: { $sum: 1 }
           }
         },
