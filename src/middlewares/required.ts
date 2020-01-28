@@ -14,17 +14,18 @@ type RequestOptions = { [block in Blocks]?: Options };
 type RequestParameters = { [block in Blocks]?: string[] | Parameters };
 
 // Utils
-const isOptions = (obj: any): obj is ParameterOptions => ('required' in obj) && ('validator' in obj);
 const isStringArray = (obj: string[] | Parameters): obj is string[] => obj instanceof Array;
 
 function toOptions(val: boolean | Validator | ParameterOptions): ParameterOptions {
-  if (isOptions(val)) return val;
+  if (typeof val === 'boolean') {
+    return { required: val };
+  }
 
   if (typeof val === 'function') {
     return { validator: val };
   }
 
-  return { required: val };
+  return val;
 }
 
 function buildOptions(params: string[] | Parameters): Options {
