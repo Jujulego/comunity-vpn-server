@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { httpError, ErrorGenerator } from 'errors';
+import { HttpError } from 'middlewares/errors';
 
 // Types
 type Blocks = 'params' | 'query' | 'body';
@@ -12,6 +12,8 @@ type Options = { [name: string]: ParameterOptions };
 type RequestObject = Request['params'] | Request['query'] | Request['body'];
 type RequestOptions = { [block in Blocks]?: Options };
 type RequestParameters = { [block in Blocks]?: string[] | Parameters };
+
+type ErrorGenerator = (msg?: string) => HttpError
 
 // Utils
 const isStringArray = (obj: string[] | Parameters): obj is string[] => obj instanceof Array;
@@ -44,12 +46,12 @@ function buildOptions(params: string[] | Parameters): Options {
   );
 }
 
-function error(res: Response, block: Blocks): ErrorGenerator {
+function error(block: Blocks): ErrorGenerator {
   if (block === 'params') {
-    return httpError(res).NotFound;
+    return HttpError.NotFound;
   }
 
-  return httpError(res).BadRequest;
+  return HttpError.BadRequest;
 }
 
 function test(obj: RequestObject, opts: Options, error: ErrorGenerator): Response | null {
@@ -62,12 +64,12 @@ function test(obj: RequestObject, opts: Options, error: ErrorGenerator): Respons
     if (required && value === undefined) {
       missing.push(value);
     } else if (validator && !validator(value)) {
-      return error(`Invalid value for ${name}`);
+      throw error(`Invalid value for ${name}`);
     }
   }
 
   if (missing.length > 0) {
-    return error(`Missing required parameters: ${missing.join(', ')}`);
+    throw error(`Missing required parameters: ${missing.join(', ')}`);
   }
 
   return null;
@@ -85,9 +87,9 @@ export default function required(parameters: RequestParameters) {
   return function(req: Request, res: Response, next: NextFunction) {
     try {
       let result: Response | null;
-      if (opts.params && (result = test(req.params, opts.params, error(res, 'params')))) return result;
-      if (opts.query  && (result = test(req.query,  opts.query,  error(res, 'query'))))  return result;
-      if (opts.body   && (result = test(req.body,   opts.body,   error(res, 'body'))))   return result;
+      if (opts.params && (result = test(req.params, opts.params, error('params')))) return result;
+      if (opts.query  && (result = test(req.query,  opts.query,  error('query'))))  return result;
+      if (opts.body   && (result = test(req.body,   opts.body,   error('body'))))   return result;
 
       next();
     } catch (error) {

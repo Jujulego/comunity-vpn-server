@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import validator from 'validator';
 
-import { httpError } from 'errors';
-
 import auth, { onlyAdmin } from 'middlewares/auth';
+import { HttpError } from 'middlewares/errors';
 import required from 'middlewares/required';
-import { route, aroute } from 'utils';
+import { aroute } from 'utils';
 
 import User from 'models/user';
 import Server from 'models/server';
@@ -35,9 +34,7 @@ export default function(app: Router) {
   );
 
   // Get me
-  app.get('/user/me', auth,
-    route((req, res) => res.send(req.user))
-  );
+  app.get('/user/me', auth, (req, res) => res.send(req.user));
 
   // Get my servers
   app.get('/user/me/servers/', auth,
@@ -52,10 +49,7 @@ export default function(app: Router) {
       // Get user data
       const { id } = req.params;
       const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
+      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
 
       res.send(user);
     })
@@ -97,10 +91,7 @@ export default function(app: Router) {
       // Get user data
       const { id } = req.params;
       const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
+      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
 
       // Update user
       const { email, password, admin } = req.body;
@@ -119,10 +110,7 @@ export default function(app: Router) {
       // Delete user data
       const { id } = req.user.id;
       const user = await User.findByIdAndDelete(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
+      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
 
       res.send(user);
     })
@@ -135,9 +123,7 @@ export default function(app: Router) {
       const { id } = req.params;
 
       const token = req.user.tokens.id(id);
-      if (!token) {
-        return httpError(res).NotFound(`No token found at ${id}`);
-      }
+      if (!token) throw HttpError.NotFound(`No token found at ${id}`);
 
       await token.remove();
       await req.user.save();
@@ -152,10 +138,7 @@ export default function(app: Router) {
       // Delete user data
       const { id } = req.params;
       const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
+      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
 
       await user.remove();
       res.send(user);
@@ -168,16 +151,10 @@ export default function(app: Router) {
       // delete token
       const { id, token: tid } = req.params;
       const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
+      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
 
       const token = user.tokens.id(tid);
-
-      if (!token) {
-        return httpError(res).NotFound(`No token found at ${tid}`);
-      }
+      if (!token) throw HttpError.NotFound(`No token found at ${tid}`);
 
       await token.remove();
       await user.save();
@@ -193,9 +170,7 @@ export default function(app: Router) {
       const { email, password } = req.body;
       const user = await User.findByCredentials(email, password);
 
-      if (!user) {
-        return httpError(res).Unauthorized('Login failed');
-      }
+      if (!user) throw HttpError.Unauthorized('Login failed');
 
       const token = await user.generateAuthToken(req);
       res.send({ _id: token.id, token: token.token });
