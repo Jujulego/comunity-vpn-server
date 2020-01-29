@@ -1,20 +1,20 @@
 import { Router } from 'express';
 import validator from 'validator';
 
-import auth, { onlyAdmin } from 'middlewares/auth';
-import { HttpError } from 'middlewares/errors';
-import required from 'middlewares/required';
 import { aroute } from 'utils';
 
+import auth, { onlyAdmin } from 'middlewares/auth';
+import required from 'middlewares/required';
+
+import Users from 'controllers/users';
 import User from 'models/user';
 import Server from 'models/server';
 
 // Utils
 const isUserId = (str: string) => (str == 'me') || validator.isMongoId(str);
-const userId = (param: string) => required({ params: { [param]: validator.isMongoId } });
 
 // Setup routes
-export default function(app: Router) {
+export default (app: Router) => {
   // Get all (admin only)
   app.get('/users', auth, onlyAdmin,
     aroute(async (req, res) => {
@@ -24,17 +24,19 @@ export default function(app: Router) {
 
   // Add a user
   app.post('/users',
-    required({ body: { email: validator.isEmail } }),
+    required({ body: { email: validator.isEmail, password: true } }),
     aroute(async (req, res) => {
-      const user = new User(req.body);
-      await user.save();
-
-      res.send(user);
+      res.send(await Users.createUser(req, req.body));
     })
   );
 
-  // Get me
-  app.get('/user/me', auth, (req, res) => res.send(req.user));
+  // Get user
+  app.get('/user/:id', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      res.send(await Users.getUser(req, req.params.id))
+    })
+  );
 
   // Get my servers
   app.get('/user/me/servers/', auth,
@@ -43,143 +45,55 @@ export default function(app: Router) {
     })
   );
 
-  // Get user (admin only)
-  app.get('/user/:id', auth, onlyAdmin, userId('id'),
-    aroute(async (req, res) => {
-      // Get user data
-      const { id } = req.params;
-      const user = await User.findById(id);
-      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
-
-      res.send(user);
-    })
-  );
-
   // Get user's servers (admin only)
-  app.get('/user/:id/servers/', auth, onlyAdmin, userId('id'),
-    aroute(async (req, res, next) => {
-      // get some servers
-      const { id } = req.params;
-      const servers = await Server.find({ 'users.user': id });
+  app.get('/user/:id/servers/', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      // Get user
+      const user = await Users.getUser(req, req.params.id);
 
-      res.send(servers);
+      // Get servers
+      res.send(await Server.find({ 'users.user': user }));
     })
   );
 
-  // Modify myself
-  app.put('/user/me', auth,
-    aroute(async (req, res, next) => {
-      // Cannot make myself an admin
-      if (!req.user.admin && req.body.admin) {
-        req.body.admin = false;
-      }
-
-      // Update user
-      const { email, password, admin } = req.body;
-      if (email !== undefined)    req.user.email    = email;
-      if (password !== undefined) req.user.password = password;
-      if (admin !== undefined)    req.user.admin    = admin;
-      await req.user.save();
-
-      res.send(req.user);
-    })
-  );
-
-  // Modify user (admin only)
-  app.put('/user/:id', auth, onlyAdmin, userId('id'),
-    aroute(async (req, res, next) => {
-      // Get user data
-      const { id } = req.params;
-      const user = await User.findById(id);
-      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
-
-      // Update user
-      const { email, password, admin } = req.body;
-      if (email !== undefined)    user.email    = email;
-      if (password !== undefined) user.password = password;
-      if (admin !== undefined)    user.admin    = admin;
-      await user.save();
-
-      res.send(user);
-    })
-  );
-
-  // Delete myself
-  app.delete('/user/me', auth,
-    aroute(async (req, res, next) => {
-      // Delete user data
-      const { id } = req.user.id;
-      const user = await User.findByIdAndDelete(id);
-      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
-
-      res.send(user);
+  // Modify user
+  app.put('/user/:id', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      res.send(await Users.updateUser(req, req.params.id, req.body));
     })
   );
 
   // Delete a token
-  app.delete('/user/me/token/:id', auth, userId('id'),
-    aroute(async (req, res, next) => {
-      // delete token
-      const { id } = req.params;
-
-      const token = req.user.tokens.id(id);
-      if (!token) throw HttpError.NotFound(`No token found at ${id}`);
-
-      await token.remove();
-      await req.user.save();
-
-      res.send(token);
+  app.delete('/user/:id/token/:tokenId', auth,
+    required({ params: { id: isUserId, tokenId: validator.isMongoId } }),
+    aroute(async (req, res) => {
+      const { id, tokenId } = req.params;
+      res.send(await Users.deleteUserToken(req, id, tokenId));
     })
   );
 
-  // Delete user (admin only)
-  app.delete('/user/:id', auth, onlyAdmin, userId('id'),
-    aroute(async (req, res, next) => {
-      // Delete user data
-      const { id } = req.params;
-      const user = await User.findById(id);
-      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
-
-      await user.remove();
-      res.send(user);
-    })
-  );
-
-  // Delete a token
-  app.delete('/user/:id/token/:token', auth, userId('id'), userId('token'),
-    aroute(async (req, res, next) => {
-      // delete token
-      const { id, token: tid } = req.params;
-      const user = await User.findById(id);
-      if (!user) throw HttpError.NotFound(`No user found at ${id}`);
-
-      const token = user.tokens.id(tid);
-      if (!token) throw HttpError.NotFound(`No token found at ${tid}`);
-
-      await token.remove();
-      await user.save();
-
-      res.send(token);
+  // Delete user
+  app.delete('/user/:id', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      res.send(await Users.deleteUser(req, req.params.id));
     })
   );
 
   // Login route
-  app.post('/users/login', required({ body: ['email'] }),
-    aroute(async (req, res, next) => {
-      // Get user
+  app.post('/users/login',
+    required({ body: { email: true, password: true } }),
+    aroute(async (req, res) => {
       const { email, password } = req.body;
-      const user = await User.findByCredentials(email, password);
-
-      if (!user) throw HttpError.Unauthorized('Login failed');
-
-      const token = await user.generateAuthToken(req);
-      res.send({ _id: token.id, token: token.token });
+      res.send(await Users.login(req, email, password));
     })
   );
 
   // Logout
   app.post('/user/me/logout', auth,
-    aroute(async (req, res, next) => {
+    aroute(async (req, res) => {
       // Remove token
       await req.token.remove();
       await req.user.save();
@@ -187,4 +101,4 @@ export default function(app: Router) {
       res.send({});
     })
   );
-}
+};
