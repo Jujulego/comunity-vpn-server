@@ -27,6 +27,13 @@ class Users {
     return user;
   }
 
+  static async findAllUsers(req: Request): Promise<UserData[]> {
+    // Only admin can access to other user's data
+    if (!req.user.admin) throw HttpError.Forbidden();
+
+    return UserModel.find({});
+  }
+
   static async login(req: Request, email: string, password: string): Promise<{ _id: string, token: string }> {
     // Search user by credentials
     const user = await UserModel.findByCredentials(email, password);

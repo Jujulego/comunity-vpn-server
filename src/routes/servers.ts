@@ -6,9 +6,13 @@ import { aroute } from 'utils';
 import auth, { onlyAdmin } from 'middlewares/auth';
 import required from 'middlewares/required';
 
+import Server from 'data/server';
+
+import Users from 'controllers/users';
 import Servers from 'controllers/servers';
-import ServerData from 'data/server';
-import Server from 'models/server';
+
+// Utils
+const isUserId = (str: string) => (str == 'me') || validator.isMongoId(str);
 
 // Setup routes
 export default (app: Router) => {
@@ -24,10 +28,13 @@ export default (app: Router) => {
 
   // Set server available
   app.put('/server/:ip/up', auth,
-    required({ params: { ip: validator.isIP }, body: { port: true } }),
+    required({
+      params: { ip: validator.isIP },
+      body: { port: true, user: { required: false, validator: isUserId } }
+    }),
     aroute(async (req, res) => {
-      const server = await Servers.setServerAvailable(req, req.params.ip, req.body.port);
-      res.send(server.toJSON({ transform: Servers.transformServer(req) }));
+      const user = await Users.getUser(req, req.body.user || 'me');
+      res.send(await Servers.setServerAvailable(req, req.params.ip, req.body.port, user));
     })
   );
 
@@ -35,8 +42,7 @@ export default (app: Router) => {
   app.put('/server/:ip/down', auth,
     required({ params: { ip: validator.isIP }, body: { port: true } }),
     aroute(async (req, res) => {
-      const server = await Servers.setServerUnavailable(req, req.params.ip, req.body.port);
-      res.send(server.toJSON({ transform: Servers.transformServer(req) }));
+      res.send(await Servers.setServerUnavailable(req, req.params.ip, req.body.port));
     })
   );
 
@@ -45,7 +51,7 @@ export default (app: Router) => {
     required({ query: { size: { required: false, validator: validator.isNumeric } } }),
     aroute(async (req, res) => {
       // get filters
-      const filters: Partial<ServerData> = {};
+      const filters: Partial<Server> = {};
       if (req.query.country) filters.country = req.query.country;
 
       // get some servers
@@ -57,9 +63,7 @@ export default (app: Router) => {
   // Get all servers (admin only)
   app.get('/servers/all', auth, onlyAdmin,
     aroute(async (req, res) => {
-      // get all servers
-      const servers = await Server.find({});
-      res.send(servers);
+      res.send(await Servers.findAllServers(req));
     })
   );
 
