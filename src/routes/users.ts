@@ -6,9 +6,11 @@ import { aroute } from 'utils';
 import auth, { onlyAdmin } from 'middlewares/auth';
 import required from 'middlewares/required';
 
-import Users from 'controllers/users';
 import User from 'models/user';
+import Users from 'controllers/users';
+
 import Server from 'models/server';
+import Servers from 'controllers/servers';
 
 // Utils
 const isUserId = (str: string) => (str == 'me') || validator.isMongoId(str);
@@ -38,22 +40,14 @@ export default (app: Router) => {
     })
   );
 
-  // Get my servers
-  app.get('/user/me/servers/', auth,
-    aroute(async (req, res) => {
-      res.send(await Server.find({ 'users.user': req.user }));
-    })
-  );
-
-  // Get user's servers (admin only)
+  // Get user's servers
   app.get('/user/:id/servers/', auth,
     required({ params: { id: isUserId } }),
     aroute(async (req, res) => {
-      // Get user
       const user = await Users.getUser(req, req.params.id);
+      const servers = await Server.find({ 'users.user': user });
 
-      // Get servers
-      res.send(await Server.find({ 'users.user': user }));
+      res.send(servers.map(server => server.toJSON({ transform: Servers.transformServer(req) })));
     })
   );
 
