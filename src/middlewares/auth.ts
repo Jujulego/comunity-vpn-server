@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 
-import { httpError } from 'errors';
+import { HttpError } from 'middlewares/errors';
+import { aroute } from 'utils';
 
 import Token, { verifyToken } from 'data/token';
 import User from 'models/user';
@@ -16,33 +17,25 @@ declare global {
 }
 
 // Middleware
-export default async function auth(req: Request, res: Response, next: NextFunction) {
-  try {
-    // Grab and decode token
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return httpError(res).Unauthorized();
-    }
+export default aroute(async (req: Request, res: Response, next: NextFunction) => {
+  // Grab and decode token
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) throw HttpError.Unauthorized();
 
-    const data = verifyToken(token);
+  const data = verifyToken(token);
 
-    // Search for corresponding user
-    const user = await User.findOne({ _id: data._id, 'tokens.token': token });
-    if (!user) {
-      return httpError(res).Unauthorized();
-    }
+  // Search for corresponding user
+  const user = await User.findOne({ _id: data._id, 'tokens.token': token });
+  if (!user) throw HttpError.Unauthorized();
 
-    req.user = user;
-    req.token = user.tokens.find(tk => tk.token == token) as Token;
+  req.user = user;
+  req.token = user.tokens.find(tk => tk.token == token) as Token;
 
-    return next();
-  } catch (error) {
-    next(error);
-  }
-}
+  return next();
+});
 
 export function onlyAdmin(req: Request, res: Response, next: NextFunction) {
   // Only admin users are authorized
-  if (!req.user.admin) return httpError(res).Forbidden();
+  if (!req.user.admin) throw HttpError.Forbidden();
   next();
 }

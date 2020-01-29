@@ -1,14 +1,19 @@
-import { Document } from 'mongoose';
+import { Document, Types } from 'mongoose';
 
 import User from './user';
 
-// Interface
+// Interfaces
+export interface UserPort extends Document {
+  // Attributes
+  user: User['id'],
+  port: number
+}
+
 interface Server extends Document {
-  ip: string,
-  port: number,
-  country: string,
-  available: boolean,
-  user: User['_id']
+  // Attributes
+  ip: string;
+  country: string;
+  readonly users: Types.DocumentArray<UserPort>;
 }
 
 export default Server;

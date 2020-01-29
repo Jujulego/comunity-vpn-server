@@ -6,9 +6,9 @@ import {
   getCACertificate,
   signClientRequest, signServerRequest
 } from 'easyrsa';
-import { httpError } from 'errors';
 
 import auth from 'middlewares/auth';
+import { HttpError } from 'middlewares/errors';
 
 // Types
 interface SignBody {
@@ -60,7 +60,7 @@ export default function(app: Router) {
       if (!body.csr)  missing.push('csr');
 
       if (missing.length > 0) {
-        return httpError(res).BadRequest(`Missing required parameters: ${missing.join(', ')}`);
+        throw HttpError.BadRequest(`Missing required parameters: ${missing.join(', ')}`);
       }
 
       // Sign certificate
@@ -80,7 +80,7 @@ export default function(app: Router) {
         }
 
         default:
-          return httpError(res).BadRequest('Invalid value for type');
+          throw HttpError.BadRequest('Invalid value for type');
       }
     });
 

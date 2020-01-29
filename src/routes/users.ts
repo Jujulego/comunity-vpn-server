@@ -1,243 +1,98 @@
 import { Router } from 'express';
+import validator from 'validator';
 
-import { httpError } from 'errors';
+import { aroute } from 'utils';
 
 import auth, { onlyAdmin } from 'middlewares/auth';
 import required from 'middlewares/required';
 
 import User from 'models/user';
+import Users from 'controllers/users';
+
 import Server from 'models/server';
-import validator from 'validator';
+import Servers from 'controllers/servers';
 
 // Utils
-const mongoId = (param: string) => required({ params: { [param]: validator.isMongoId } });
+const isUserId = (str: string) => (str == 'me') || validator.isMongoId(str);
 
 // Setup routes
-export default function(app: Router) {
+export default (app: Router) => {
   // Get all (admin only)
-  app.get('/users', auth, onlyAdmin, async function(req, res, next) {
-    try {
-      // Gather all users data
-      const users = await User.find({});
-      res.send(users);
-    } catch (error) {
-      next(error);
-    }
-  });
+  app.get('/users', auth, onlyAdmin,
+    aroute(async (req, res) => {
+      res.send(await User.find({}));
+    })
+  );
 
   // Add a user
-  app.post('/users', required({ body: ['email'] }), async function(req, res, next) {
-    try {
-      // Create new user
-      const user = new User(req.body);
-      await user.save();
+  app.post('/users',
+    required({ body: { email: validator.isEmail, password: true } }),
+    aroute(async (req, res) => {
+      res.send(await Users.createUser(req, req.body));
+    })
+  );
 
-      res.send(user);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // Get user
+  app.get('/user/:id', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      res.send(await Users.getUser(req, req.params.id))
+    })
+  );
 
-  // Get me
-  app.get('/user/me', auth, function(req, res) {
-    res.send(req.user);
-  });
+  // Get user's servers
+  app.get('/user/:id/servers/', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      const user = await Users.getUser(req, req.params.id);
+      const servers = await Server.find({ 'users.user': user });
 
-  // Get my servers
-  app.get('/user/me/servers/', auth, async function(req, res, next) {
-    try {
-      // get my servers
-      const servers = await Server.find({ user: req.user });
-      res.send(servers);
-    } catch (error) {
-      next(error);
-    }
-  });
+      res.send(servers.map(server => server.toJSON({ transform: Servers.transformServer(req) })));
+    })
+  );
 
-  // Get user (admin only)
-  app.get('/user/:id', auth, onlyAdmin, mongoId('id'), async function(req, res, next) {
-    try {
-      // Get user data
-      const { id } = req.params;
-      const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
-
-      res.send(user);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Get user's servers (admin only)
-  app.get('/user/:id/servers/', auth, onlyAdmin, mongoId('id'), async function(req, res, next) {
-    try {
-      // get some servers
-      const { id } = req.params;
-      const servers = await Server.find({ user: id });
-
-      res.send(servers);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Modify myself
-  app.put('/user/me', auth, async function(req, res, next) {
-    try {
-      // Cannot make myself an admin
-      if (!req.user.admin && req.body.admin) {
-        req.body.admin = false;
-      }
-
-      // Update user
-      const { email, password, admin } = req.body;
-      if (email !== undefined)    req.user.email    = email;
-      if (password !== undefined) req.user.password = password;
-      if (admin !== undefined)    req.user.admin    = admin;
-      await req.user.save();
-
-      res.send(req.user);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Modify user (admin only)
-  app.put('/user/:id', auth, onlyAdmin, mongoId('id'), async function(req, res, next) {
-    try {
-      // Get user data
-      const { id } = req.params;
-      const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
-
-      // Update user
-      const { email, password, admin } = req.body;
-      if (email !== undefined)    user.email    = email;
-      if (password !== undefined) user.password = password;
-      if (admin !== undefined)    user.admin    = admin;
-      await user.save();
-
-      res.send(user);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Delete myself
-  app.delete('/user/me', auth, async function(req, res, next) {
-    try {
-      // Delete user data
-      const { id } = req.user.id;
-      const user = await User.findByIdAndDelete(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
-
-      res.send(user);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // Modify user
+  app.put('/user/:id', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      res.send(await Users.updateUser(req, req.params.id, req.body));
+    })
+  );
 
   // Delete a token
-  app.delete('/user/me/token/:id', auth, mongoId('id'), async function(req, res, next) {
-    try {
-      // delete token
-      const { id } = req.params;
+  app.delete('/user/:id/token/:tokenId', auth,
+    required({ params: { id: isUserId, tokenId: validator.isMongoId } }),
+    aroute(async (req, res) => {
+      const { id, tokenId } = req.params;
+      res.send(await Users.deleteUserToken(req, id, tokenId));
+    })
+  );
 
-      const token = req.user.tokens.id(id);
-      if (!token) {
-        return httpError(res).NotFound(`No token found at ${id}`);
-      }
-
-      await token.remove();
-      await req.user.save();
-
-      res.send(token);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Delete user (admin only)
-  app.delete('/user/:id', auth, onlyAdmin, mongoId('id'), async function(req, res, next) {
-    try {
-      // Delete user data
-      const { id } = req.params;
-      const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
-
-      await user.remove();
-      res.send(user);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Delete a token
-  app.delete('/user/:id/token/:token', auth, mongoId('id'), mongoId('token'), async function(req, res, next) {
-    try {
-      // delete token
-      const { id, token: tid } = req.params;
-      const user = await User.findById(id);
-
-      if (!user) {
-        return httpError(res).NotFound(`No user found at ${id}`);
-      }
-
-      const token = user.tokens.id(tid);
-
-      if (!token) {
-        return httpError(res).NotFound(`No token found at ${tid}`);
-      }
-
-      await token.remove();
-      await user.save();
-
-      res.send(token);
-    } catch (error) {
-      next(error);
-    }
-  });
+  // Delete user
+  app.delete('/user/:id', auth,
+    required({ params: { id: isUserId } }),
+    aroute(async (req, res) => {
+      res.send(await Users.deleteUser(req, req.params.id));
+    })
+  );
 
   // Login route
-  app.post('/users/login', required({ body: ['email'] }), async function(req, res, next) {
-    try {
-      // Get user
+  app.post('/users/login',
+    required({ body: { email: true, password: true } }),
+    aroute(async (req, res) => {
       const { email, password } = req.body;
-      const user = await User.findByCredentials(email, password);
-
-      if (!user) {
-        return httpError(res).Unauthorized('Login failed');
-      }
-
-      const token = await user.generateAuthToken(req);
-      res.send({ _id: token.id, token: token.token });
-    } catch (error) {
-      next(error);
-    }
-  });
+      res.send(await Users.login(req, email, password));
+    })
+  );
 
   // Logout
-  app.post('/user/me/logout', auth, async function(req, res, next) {
-    try {
+  app.post('/user/me/logout', auth,
+    aroute(async (req, res) => {
       // Remove token
       await req.token.remove();
       await req.user.save();
 
       res.send({});
-    } catch (error) {
-      next(error);
-    }
-  });
-}
+    })
+  );
+};

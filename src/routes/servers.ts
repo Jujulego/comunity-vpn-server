@@ -1,189 +1,72 @@
 import { Router } from 'express';
-import IPData from 'ipdata';
 import validator from 'validator';
 
-import { env } from 'env';
-import { httpError } from 'errors';
+import { aroute } from 'utils';
 
 import auth, { onlyAdmin } from 'middlewares/auth';
 import required from 'middlewares/required';
 
+import Servers from 'controllers/servers';
 import ServerData from 'data/server';
 import Server from 'models/server';
 
-// Setup ipdata service
-const ipdata = new IPData(env.IPDATA_KEY);
-
-// Utils
-const mongoId = required({ params: { id: validator.isMongoId } });
-
 // Setup routes
-export default function(app: Router) {
-  // Add server
-  app.post('/server', auth, required({ body: ['ip'] }), async function(req, res, next) {
-    try {
-      // Get ip's country
-      const { ip } = req.body;
-      const { country_name: country } = await ipdata.lookup(ip);
-
-      // Create server
-      const server = new Server({ ip, country, user: req.user });
-      await server.save();
-
-      res.send(server);
-    } catch (error) {
-      next(error);
-    }
-  });
-
+export default (app: Router) => {
   // Get server data
-  app.get('/server/:id', auth, mongoId, async function(req, res, next) {
-    try {
+  app.get('/server/:ip', auth,
+    required({ params: { ip: validator.isIP } }),
+    aroute(async (req, res) => {
       // Get server data
-      const { id } = req.params;
-      const server = await Server.findById(id);
-
-      if (!server) {
-        return httpError(res).NotFound(`No server found at ${id}`);
-      }
-
-      res.send(server);
-    } catch (error) {
-      next(error);
-    }
-  });
+      const server = await Servers.getServer(req, req.params.ip);
+      res.send(server.toJSON({ transform: Servers.transformServer(req) }));
+    })
+  );
 
   // Set server available
-  app.put('/server/:id/up', auth, mongoId, required({ body: ['port'] }), async function(req, res, next) {
-    try {
-      // Get server data
-      const { id } = req.params;
-      const { port } = req.body;
-      const server = await Server.findById(id);
-
-      // Errors
-      if (!server) {
-        return httpError(res).NotFound(`No server found at ${id}`);
-      }
-
-      if (!req.user.admin && server.user != req.user.id) {
-        return httpError(res).Forbidden();
-      }
-
-      // Update server
-      server.available = true;
-      server.port = port;
-      await server.save();
-
-      res.send(server);
-    } catch (error) {
-      next(error);
-    }
-  });
+  app.put('/server/:ip/up', auth,
+    required({ params: { ip: validator.isIP }, body: { port: true } }),
+    aroute(async (req, res) => {
+      const server = await Servers.setServerAvailable(req, req.params.ip, req.body.port);
+      res.send(server.toJSON({ transform: Servers.transformServer(req) }));
+    })
+  );
 
   // Set server unavailable
-  app.put('/server/:id/down', auth, mongoId, async function(req, res, next) {
-    try {
-      // Get server data
-      const { id } = req.params;
-      const server = await Server.findById(id);
-
-      // Errors
-      if (!server) {
-        return httpError(res).NotFound(`No server found at ${id}`);
-      }
-
-      if (!req.user.admin && server.user != req.user.id) {
-        return httpError(res).Forbidden();
-      }
-
-      // Update server
-      server.available = false;
-      await server.save();
-
-      res.send(server);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Delete server
-  app.delete('/server/:id', auth, mongoId, async function(req, res, next) {
-    try {
-      // Get server data
-      const { id } = req.params;
-      const server = await Server.findById(id);
-
-      // Errors
-      if (!server) {
-        return httpError(res).NotFound(`No server found at ${id}`);
-      }
-
-      if (!req.user.admin && server.user != req.user.id) {
-        return httpError(res).Forbidden();
-      }
-
-      // Delete server
-      await server.remove();
-
-      res.send(server);
-    } catch (error) {
-      next(error);
-    }
-  });
+  app.put('/server/:ip/down', auth,
+    required({ params: { ip: validator.isIP }, body: { port: true } }),
+    aroute(async (req, res) => {
+      const server = await Servers.setServerUnavailable(req, req.params.ip, req.body.port);
+      res.send(server.toJSON({ transform: Servers.transformServer(req) }));
+    })
+  );
 
   // Get some servers
-  app.get('/servers', auth, async function(req, res, next) {
-    try {
+  app.get('/servers', auth,
+    required({ query: { size: { required: false, validator: validator.isNumeric } } }),
+    aroute(async (req, res) => {
       // get filters
-      const filters: Partial<ServerData> = {
-        available: true
-      };
-
+      const filters: Partial<ServerData> = {};
       if (req.query.country) filters.country = req.query.country;
 
       // get some servers
-      const servers = await Server.aggregate([
-        { $match: filters },
-        { $sample: { size: parseInt(req.query.size) || 5 } },
-        { $project: { _id: 1, country: 1, ip: 1, port: 1 }},
-      ]);
-
-      res.send(servers);
-    } catch (error) {
-      next(error);
-    }
-  });
+      const size = req.query.size && parseInt(req.query.size);
+      res.send(await Servers.findSomeServers(req, filters, size));
+    })
+  );
 
   // Get all servers (admin only)
-  app.get('/servers/all', auth, onlyAdmin, async function(req, res, next) {
-    try {
+  app.get('/servers/all', auth, onlyAdmin,
+    aroute(async (req, res) => {
       // get all servers
-      const servers = await Server.find();
+      const servers = await Server.find({});
       res.send(servers);
-    } catch (error) {
-      next(error);
-    }
-  });
+    })
+  );
 
   // Get countries
-  app.get('/servers/countries', auth, async function(req, res, next) {
-    try {
-      // get available countries
-      const countries = await Server.aggregate([
-        { $match: { available: true } },
-        {
-          $group: {
-            _id: '$country',
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]);
-
-      res.send(countries);
-    } catch (error) {
-      next(error);
-    }
-  });
+  app.get('/servers/countries', auth,
+    aroute(async (req, res) => {
+      res.send(await Servers.countries(req));
+    })
+  );
 }

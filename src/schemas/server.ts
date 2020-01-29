@@ -3,13 +3,14 @@ import validator from 'validator';
 
 import ServerData from 'data/server';
 
-// Schema
+// Schemas
 const Server = new Schema<ServerData>({
-  ip: { type: String, required: true, validate: validator.isIP },
-  port: { type: Number, default: 0 },
+  ip: { type: String, required: true, unique: true, validate: validator.isIP },
   country: { type: String, required: true, index: true },
-  available: { type: Boolean, default: false },
-  user: { type: Schema.Types.ObjectId, required: true }
+  users: [{
+    port: { type: Number, required: true },
+    user: { type: Schema.Types.ObjectId, required: true }
+  }]
 });
 
 export default Server;
