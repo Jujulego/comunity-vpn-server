@@ -6,10 +6,7 @@ import { aroute } from 'utils';
 import auth, { onlyAdmin } from 'middlewares/auth';
 import required from 'middlewares/required';
 
-import User from 'models/user';
 import Users from 'controllers/users';
-
-import Server from 'models/server';
 import Servers from 'controllers/servers';
 
 // Utils
@@ -20,7 +17,7 @@ export default (app: Router) => {
   // Get all (admin only)
   app.get('/users', auth, onlyAdmin,
     aroute(async (req, res) => {
-      res.send(await User.find({}));
+      res.send(await Users.findAllUsers(req));
     })
   );
 
@@ -45,9 +42,7 @@ export default (app: Router) => {
     required({ params: { id: isUserId } }),
     aroute(async (req, res) => {
       const user = await Users.getUser(req, req.params.id);
-      const servers = await Server.find({ 'users.user': user });
-
-      res.send(servers.map(server => server.toJSON({ transform: Servers.transformServer(req) })));
+      res.send(await Servers.findUserServers(req, user));
     })
   );
 

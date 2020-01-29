@@ -5,14 +5,24 @@ import { env } from 'env';
 import { HttpError } from 'middlewares/errors';
 
 import ServerData from 'data/server';
+import UserData from 'data/user';
+
 import ServerModel from 'models/server';
 
 // Type
-export interface SimpleServer {
+export interface ServerProposal {
   _id: string,
   ip: string,
   port: number,
   country: string
+}
+
+export interface UserServer {
+  _id: string,
+  ip: string,
+  port: number,
+  country: string,
+  user: string
 }
 
 export interface Country {
@@ -65,7 +75,7 @@ class Servers {
     return server;
   }
 
-  static async findSomeServers(req: Request, filters: Partial<ServerData>, sampleSize: number = 5): Promise<SimpleServer[]> {
+  static async findSomeServers(req: Request, filters: Partial<ServerData>, sampleSize: number = 5): Promise<ServerProposal[]> {
     // Aggregate data
     return ServerModel.aggregate([
       { $match: filters },
@@ -75,7 +85,28 @@ class Servers {
     ]);
   }
 
-  static async countries(req: Request): Promise<Country[]> {
+  static async findUserServers(req: Request, user: UserData): Promise<UserServer[]> {
+    // Aggregate data
+    return ServerModel.aggregate([
+      { $match: { 'users.user': user._id } },
+      { $unwind: { path: '$users' } },
+      { $project: { _id: '$users._id', ip: 1, port: '$users.port', country: 1, user: '$users.user' }},
+      { $match: { user: user._id } }
+    ]);
+  }
+
+  static async findAllServers(req: Request): Promise<UserServer[]> {
+    // Available only for admin's
+    if (!req.user.admin) throw HttpError.Forbidden();
+
+    // Aggregate data
+    return ServerModel.aggregate([
+      { $unwind: { path: '$users' } },
+      { $project: { _id: '$users._id', ip: 1, port: '$users.port', country: 1, user: '$users.user' }}
+    ]);
+  }
+
+  static async countries(_: Request): Promise<Country[]> {
     // Aggregate data
     return ServerModel.aggregate([
       { $group: {
@@ -87,35 +118,50 @@ class Servers {
     ]);
   }
 
-  static async setServerAvailable(req: Request, ip: string, port: number): Promise<ServerData> {
+  static async setServerAvailable(req: Request, ip: string, port: number, user: UserData): Promise<UserServer> {
     // Get or create server
     const server = await this.getOrCreateServer(req, ip);
 
     // Search for port
     let up = server.users.find(up => up.port === port);
-    if (up && up.user !== req.user.id) throw HttpError.Forbidden(`Port ${ip}:${port} is already used`);
+    if (up && up.user !== user.id) throw HttpError.Forbidden(`Port ${ip}:${port} is already used`);
 
     // Add user
     if (!up) {
-      up = server.users.create({ port, user: req.user });
+      up = server.users.create({ port, user });
       server.users.push(up);
     }
 
-    return await server.save();
+    await server.save();
+    return {
+      _id: up._id,
+      ip: server.ip,
+      port: up.port,
+      country: server.country,
+      user: up.user
+    }
   }
 
-  static async setServerUnavailable(req: Request, ip: string, port: number): Promise<ServerData> {
+  static async setServerUnavailable(req: Request, ip: string, port: number): Promise<UserServer> {
     // Get or create server
     const server = await this.getServer(req, ip);
 
     // Search for port
     let up = server.users.find(up => up.port === port);
     if (!up) throw HttpError.NotFound(`Port ${ip}:${port} not found`);
-    if (up.user !== req.user.id) throw HttpError.Forbidden();
+    if (!req.user.admin && up.user !== req.user.id) throw HttpError.Forbidden();
 
     // Delete port
     await up.remove();
-    return await server.save();
+    await server.save();
+
+    return {
+      _id: up._id,
+      ip: server.ip,
+      port: up.port,
+      country: server.country,
+      user: up.user
+    }
   }
 }
 
