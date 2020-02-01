@@ -5,11 +5,12 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY package.json .
-RUN npm install
+COPY yarn.lock .
+RUN yarn install
 
 COPY src /app/src
 COPY tsconfig.json /app
-RUN npm run build -- --prod
+RUN yarn run build
 
 # 2nd stage : run !
 FROM node:12.14.0
@@ -23,6 +24,6 @@ COPY --from=builder /app/build /app
 COPY --from=builder /app/package.json /app
 COPY --from=builder /app/yarn.lock /app
 
-RUN npm install --prod
+RUN yarn install --prod
 
 ENTRYPOINT node server.js
