@@ -3,6 +3,8 @@ import { Request } from 'express';
 import { HttpError } from 'middlewares/errors';
 
 import UserData from 'data/user';
+import { verifyToken } from 'data/token';
+
 import UserModel from 'models/user';
 
 // Controller
@@ -25,6 +27,22 @@ class Users {
     if (!user) throw HttpError.NotFound(`No user found at ${id}`);
 
     return user;
+  }
+
+  static async findWithToken(id: string, token: string): Promise<UserData> {
+    const user = await UserModel.findOne({ _id: id, 'tokens.token': token });
+    if (!user) throw HttpError.Unauthorized();
+
+    return user;
+  }
+
+  static async authenticate(token?: string): Promise<UserData> {
+    // Decode token
+    if (!token) throw HttpError.Unauthorized();
+    const data = verifyToken(token);
+
+    // Search for user
+    return this.findWithToken(data._id, token);
   }
 
   static async findAllUsers(req: Request): Promise<UserData[]> {

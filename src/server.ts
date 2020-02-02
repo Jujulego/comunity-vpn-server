@@ -1,8 +1,11 @@
+import http from 'http';
 import mongoose from 'mongoose';
+import SocketIO from 'socket.io';
 
 import { app } from 'app';
 import { env } from 'env';
 import easyrsa from 'easyrsa';
+import wsapp from 'wsapp';
 
 // Function
 async function server_setup() {
@@ -32,7 +35,10 @@ async function server_setup() {
   console.log("Connected to MongoDB");
 
   // Start server
-  app.listen(env.PORT, () => {
+  const server = http.createServer(app);
+  wsapp(SocketIO(server).of('/api'));
+
+  server.listen(env.PORT, () => {
     console.log(`Server listening at http://localhost:${env.PORT}/`);
   });
 }
