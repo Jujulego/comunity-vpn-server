@@ -12,6 +12,7 @@ import Users from 'controllers/users';
 import Servers from 'controllers/servers';
 
 // Utils
+const isNumber = (str: string | number) => typeof str === 'number' || validator.isNumeric(str);
 const isUserId = (str: string) => (str == 'me') || validator.isMongoId(str);
 
 // Setup routes
@@ -30,19 +31,19 @@ export default (app: Router) => {
   app.put('/server/:ip/up', auth,
     required({
       params: { ip: validator.isIP },
-      body: { port: true, user: { required: false, validator: isUserId } }
+      body: { port: isNumber, user: { required: false, validator: isUserId } }
     }),
     aroute(async (req, res) => {
       const user = await Users.getUser(req, req.body.user || 'me');
-      res.send(await Servers.setServerAvailable(req, req.params.ip, req.body.port, user));
+      res.send(await Servers.setServerAvailable(req, req.params.ip, parseInt(req.body.port), user));
     })
   );
 
   // Set server unavailable
   app.put('/server/:ip/down', auth,
-    required({ params: { ip: validator.isIP }, body: { port: true } }),
+    required({ params: { ip: validator.isIP }, body: { port: isNumber } }),
     aroute(async (req, res) => {
-      res.send(await Servers.setServerUnavailable(req, req.params.ip, req.body.port));
+      res.send(await Servers.setServerUnavailable(req, req.params.ip, parseInt(req.body.port)));
     })
   );
 

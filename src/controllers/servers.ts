@@ -136,7 +136,7 @@ class Servers {
 
     // Search for port
     let up = server.users.find(up => up.port === port);
-    if (up && up.user !== user.id) throw HttpError.Forbidden(`Port ${ip}:${port} is already used`);
+    if (up && up.user != user.id) throw HttpError.Forbidden(`Port ${ip}:${port} is already used`);
 
     // Add user
     if (!up) {
@@ -166,7 +166,7 @@ class Servers {
     // Search for port
     let up = server.users.find(up => up.port === port);
     if (!up) throw HttpError.NotFound(`Port ${ip}:${port} not found`);
-    if (!req.user.admin && up.user !== req.user.id) throw HttpError.Forbidden();
+    if (!req.user.admin && up.user != req.user.id) throw HttpError.Forbidden();
 
     // Delete port
     await up.remove();
