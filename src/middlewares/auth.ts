@@ -1,38 +1,57 @@
 import { Request, Response, NextFunction } from 'express';
+import { Socket } from 'socket.io';
 
 import { HttpError } from 'middlewares/errors';
 import { aroute } from 'utils';
 
-import Token, { verifyToken } from 'data/token';
-import User from 'models/user';
+import Users from 'controllers/users';
+import Token from 'data/token';
+import User from 'data/user';
 
 // Add new properties to Request
 declare global {
   namespace Express {
     interface Request {
-      user: import('../data/user').default
+      user: User
       token: Token
+    }
+  }
+
+  namespace SocketIO {
+    interface Socket {
+      user: () => Promise<User>
     }
   }
 }
 
-// Middleware
+// Middlewares
 export default aroute(async (req: Request, res: Response, next: NextFunction) => {
-  // Grab and decode token
+  // Authenticate user
   const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) throw HttpError.Unauthorized();
+  const user = await Users.authenticate(token);
 
-  const data = verifyToken(token);
-
-  // Search for corresponding user
-  const user = await User.findOne({ _id: data._id, 'tokens.token': token });
-  if (!user) throw HttpError.Unauthorized();
-
+  // Store documents in request
   req.user = user;
   req.token = user.tokens.find(tk => tk.token == token) as Token;
 
   return next();
 });
+
+export async function wsauth(socket: Socket, next: (err?: any) => void) {
+  try {
+    // Authenticate user
+    const { token } = socket.handshake.query;
+    const user = await Users.authenticate(token);
+
+    // Access to user from socket
+    socket.user = async () => await Users.findWithToken(user._id, token);
+
+    return next();
+  } catch (error) {
+    console.log(error);
+    return next(error);
+  }
+}
 
 export function onlyAdmin(req: Request, res: Response, next: NextFunction) {
   // Only admin users are authorized

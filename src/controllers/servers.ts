@@ -1,12 +1,12 @@
 import { Request } from 'express';
 import IPData from 'ipdata';
+import { Namespace } from 'socket.io';
 
 import { env } from 'env';
 import { HttpError } from 'middlewares/errors';
 
 import ServerData from 'data/server';
 import UserData from 'data/user';
-
 import ServerModel from 'models/server';
 
 // Type
@@ -35,7 +35,19 @@ const ipdata = new IPData(env.IPDATA_KEY);
 
 // Controller
 class Servers {
+  // Attributes
+  static io: Namespace;
+
   // Methods
+  static register(io: Namespace) {
+    this.io = io;
+  }
+
+  static event(kind: string, server: UserServer) {
+    this.io.to(server.user).emit('event', { to: server.user, scope: 'servers', kind, server });
+    this.io.to('admin').emit('event', { to: 'admin', scope: 'servers', kind, server });
+  }
+
   static transformServer(req: Request) {
     return (doc: ServerData, ret: any) => {
       if (req.user.admin) return ret;
@@ -53,7 +65,7 @@ class Servers {
     const { country_name: country } = await ipdata.lookup(ip);
 
     // Create server
-    const server = new ServerModel({ ip, country, users: [] });
+    let server = new ServerModel({ ip, country, users: [] });
     return await server.save();
   }
 
@@ -124,7 +136,7 @@ class Servers {
 
     // Search for port
     let up = server.users.find(up => up.port === port);
-    if (up && up.user !== user.id) throw HttpError.Forbidden(`Port ${ip}:${port} is already used`);
+    if (up && up.user != user.id) throw HttpError.Forbidden(`Port ${ip}:${port} is already used`);
 
     // Add user
     if (!up) {
@@ -133,13 +145,18 @@ class Servers {
     }
 
     await server.save();
-    return {
+
+    // Send
+    const us: UserServer = {
       _id: up._id,
       ip: server.ip,
       port: up.port,
       country: server.country,
       user: up.user
-    }
+    };
+    this.event('up', us);
+
+    return us;
   }
 
   static async setServerUnavailable(req: Request, ip: string, port: number): Promise<UserServer> {
@@ -149,19 +166,23 @@ class Servers {
     // Search for port
     let up = server.users.find(up => up.port === port);
     if (!up) throw HttpError.NotFound(`Port ${ip}:${port} not found`);
-    if (!req.user.admin && up.user !== req.user.id) throw HttpError.Forbidden();
+    if (!req.user.admin && up.user != req.user.id) throw HttpError.Forbidden();
 
     // Delete port
     await up.remove();
     await server.save();
 
-    return {
+    // Send
+    const us: UserServer = {
       _id: up._id,
       ip: server.ip,
       port: up.port,
       country: server.country,
       user: up.user
-    }
+    };
+    this.event('down', us);
+
+    return us;
   }
 }
 
