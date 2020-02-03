@@ -3,6 +3,7 @@ import validator from 'validator';
 
 import { wsauth } from 'middlewares/auth';
 import Users from 'controllers/users';
+import Servers from 'controllers/servers';
 
 // Setup websockets
 export default function(io: Namespace) {
@@ -11,6 +12,7 @@ export default function(io: Namespace) {
 
   // Add controllers
   Users.register(io);
+  Servers.register(io);
 
   // Connection
   io.on('connection', async (socket) => {
