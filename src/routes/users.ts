@@ -87,6 +87,9 @@ export default (app: Router) => {
       await req.token.remove();
       await req.user.save();
 
+      // Event
+      Users.event('update', req.user);
+
       res.send({});
     })
   );
